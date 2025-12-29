@@ -1,0 +1,31 @@
+{
+  "name": "@melledijkstra/main",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal toolbox containing various tools and utilities",
+  "author": "Melle Dijkstra",
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "tsdown": "^0.18.3",
+    "turbo": "^2.7.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "@melledijkstra/toolbox": "link:./packages/toolbox",
+    "@melledijkstra/config": "link:./packages/config"
+  },
+  "keywords": [
+    "toolbox",
+    "utils",
+    "utilities"
+  ],
+  "license": "MIT",
+  "packageManager": "pnpm@10.26.2"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "@melledijkstra/config",
+  "version": "1.0.0",
+  "author": "Melle Dijkstra",
+  "exports": {
+    "./tsdown": "./tsdown.base.config.ts"
+  }
+}
