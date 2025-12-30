@@ -31,6 +31,15 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)
 
+  packages/api:
+    dependencies:
+      '@melledijkstra/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@melledijkstra/storage':
+        specifier: workspace:*
+        version: link:../storage
+
   packages/auth: {}
 
   packages/config: {}

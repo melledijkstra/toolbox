@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "test": "turbo test"
+    "test": "vitest"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",

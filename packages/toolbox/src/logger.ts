@@ -2,9 +2,18 @@ export class Logger {
   public name: string
   public disabled = false
 
-  constructor(name: string, disabled = false) {
+  constructor(name: string, disabled?: boolean) {
     this.name = name
-    this.disabled = disabled
+    if (typeof disabled !== 'undefined') {
+      this.disabled = disabled
+    } else {
+      this.disabled = this.isDisabledByEnv()
+    }
+  }
+
+  private isDisabledByEnv(): boolean {
+    const envVar = process.env.NODE_ENV
+    return envVar?.toLowerCase() === 'development'
   }
 
   log(...data: unknown[]) {
@@ -22,10 +31,16 @@ export class Logger {
   }
 
   error(...data: unknown[]) {
+    if (this.disabled) {
+      return
+    }
     console.error(`[${this.name}]`, ...data)
   }
 
   warn(...data: unknown[]) {
+    if (this.disabled) {
+      return
+    }
     console.warn(`[${this.name}]`, ...data)
   }
 

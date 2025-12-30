@@ -15,11 +15,6 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown",
-    "test": "vitest"
-  },
-  "keywords": [
-    "auth",
-    "authentication"
-  ]
+    "build": "tsdown"
+  }
 }
