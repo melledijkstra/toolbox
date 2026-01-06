@@ -30,10 +30,10 @@ export class UnsplashClient implements ILogger {
     this.logger.log('Fetching Unsplash image from', {
       host: this.HOST,
       endpoint: ENDPOINT,
-      query: this.query
+      query: this.query,
     })
     const serverUrl = new URL(ENDPOINT, this.HOST)
-    
+
     if (this.query) {
       serverUrl.searchParams.set('query', this.query)
     }

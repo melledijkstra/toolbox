@@ -1,6 +1,6 @@
 export type OauthProvider = 'google' | 'spotify' | 'fitbit'
 
-export interface AuthProvider {
+export interface AuthConfig {
   name: OauthProvider
   clientId: string
   scopes: string[]
@@ -8,27 +8,26 @@ export interface AuthProvider {
   tokenEndpoint: string
 }
 
-export class GoogleAuthProvider implements AuthProvider {
+export class GoogleAuthConfig implements AuthConfig {
   name: OauthProvider = 'google'
-  clientId = process.env.VITE_GOOGLE_CLIENT_ID ?? ''
-  scopes = []
+  clientId = process.env.GOOGLE_CLIENT_ID ?? ''
+  scopes = ['openid', 'profile']
   authEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth'
   tokenEndpoint = 'https://oauth2.googleapis.com/token'
 }
 
-export class SpotifyAuthProvider implements AuthProvider {
+export class SpotifyAuthConfig implements AuthConfig {
   name: OauthProvider = 'spotify'
-  clientId = process.env.VITE_SPOTIFY_CLIENT_ID ?? ''
+  clientId = process.env.SPOTIFY_CLIENT_ID ?? ''
   scopes = []
   authEndpoint = 'https://accounts.spotify.com/authorize'
   tokenEndpoint = 'https://accounts.spotify.com/api/token'
 }
 
-export class FitbitAuthProvider implements AuthProvider {
+export class FitbitAuthConfig implements AuthConfig {
   name: OauthProvider = 'fitbit'
-  clientId = process.env.VITE_FITBIT_CLIENT_ID ?? ''
+  clientId = process.env.FITBIT_CLIENT_ID ?? ''
   scopes = []
   authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
   tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
 }
-

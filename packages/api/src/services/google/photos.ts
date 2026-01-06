@@ -11,12 +11,12 @@ export async function fetchPhotos() {
   fetch('https://photoslibrary.googleapis.com/v1/mediaItems', {
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`
-    }
+      Authorization: `Bearer ${token}`,
+    },
   })
-    .then((response) => response.json())
+    .then(response => response.json())
     .then((data) => {
       logger.log('Photos:', data.mediaItems)
     })
-    .catch((error) => console.error('Error fetching photos:', error))
+    .catch(error => console.error('Error fetching photos:', error))
 }

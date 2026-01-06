@@ -16,5 +16,8 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown"
+  },
+  "dependencies": {
+    "@melledijkstra/toolbox": "link:../toolbox"
   }
 }

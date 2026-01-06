@@ -6,7 +6,8 @@ export class Logger {
     this.name = name
     if (typeof disabled !== 'undefined') {
       this.disabled = disabled
-    } else {
+    }
+    else {
       this.disabled = this.isDisabledByEnv()
     }
   }

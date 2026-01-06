@@ -18,13 +18,13 @@ export const MIN_5 = 5 * 60 * 1000
 export const MIN_10 = 10 * 60 * 1000
 export const MIN_15 = 15 * 60 * 1000
 
-
 export function get(key: string) {
   const cachedItem = cache[key]
   if (cachedItem) {
     if (Date.now() - cachedItem.timestamp > cachedItem.ttl) {
       delete cache[key]
-    } else {
+    }
+    else {
       logger.log('Cache hit:', key)
       return cachedItem.data
     }
@@ -35,7 +35,7 @@ export function set(key: string, value: unknown, ttl = MIN_5): void {
   cache[key] = {
     data: value,
     timestamp: Date.now(),
-    ttl: ttl ?? MIN_5
+    ttl: ttl ?? MIN_5,
   }
 }
 
@@ -50,7 +50,7 @@ type CacheOptions = {
  */
 export function withCache<T, A extends unknown[]>(
   originalFunc: (...args: A) => Promise<T>,
-  options: CacheOptions = {}
+  options: CacheOptions = {},
 ): (...args: A) => Promise<T> {
   const defaultTTL = 5 * 60 * 1000 // 5 minutes
 
@@ -83,19 +83,20 @@ export class MemoryCache implements ILogger {
     if (!cachedItem) {
       return
     }
-    
+
     if (Date.now() - cachedItem.timestamp > cachedItem.ttl) {
       delete this.cache[key]
-    } else {
+    }
+    else {
       return cachedItem.data as T
     }
   }
-  
+
   set(key: string, value: unknown, ttl = MIN_5) {
     this.cache[key] = {
       data: value,
       timestamp: Date.now(), // store insertion time
-      ttl: ttl ?? MIN_5
+      ttl: ttl ?? MIN_5,
     }
   }
 }

@@ -18,7 +18,7 @@ export class GoogleTasksApiClient extends TokenBaseClient {
     if (!this.token) {
       const token = await this.auth.getAuthToken()
       this.token = token ?? ''
-    }    
+    }
 
     return super.request<T>(endpoint, config, queryParams)
   }
@@ -34,11 +34,12 @@ export class GoogleTasksApiClient extends TokenBaseClient {
       const response = await this.request<{ items: Task[] }>(
         `/lists/${taskListId}/tasks`,
         {},
-        queryParams
+        queryParams,
       )
 
       return response?.items ?? []
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error fetching tasks:', error)
       return []
     }
@@ -47,11 +48,12 @@ export class GoogleTasksApiClient extends TokenBaseClient {
   async getTaskLists(): Promise<TaskList[] | undefined> {
     try {
       const response = await this.request<{ items: TaskList[] }>(
-        '/users/@me/lists'
+        '/users/@me/lists',
       )
 
       return response?.items ?? []
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error fetching task lists:', error)
     }
   }
@@ -59,28 +61,29 @@ export class GoogleTasksApiClient extends TokenBaseClient {
   async setTaskStatus(
     task: string | Task,
     status: Task['status'] = 'completed',
-    taskListId: string = '@default'
+    taskListId: string = '@default',
   ): Promise<Task | undefined> {
     const id = typeof task === 'string' ? task : task.id
     const taskData: Partial<Task> = {
-      status
+      status,
     }
     try {
       const response = await this.request<Task>(
         `/lists/${taskListId}/tasks/${id}`,
         {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           method: 'PATCH',
-          body: JSON.stringify(taskData)
-        }
+          body: JSON.stringify(taskData),
+        },
       )
 
       if (response) {
         return response
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error completing task', error)
     }
   }
@@ -92,23 +95,24 @@ export class GoogleTasksApiClient extends TokenBaseClient {
         {
           method: 'PATCH',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(task)
-        }
+          body: JSON.stringify(task),
+        },
       )
 
       if (response) {
         return response
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error updating task', error)
     }
   }
 
   async createTask(
     title: string,
-    taskListId: string = '@default'
+    taskListId: string = '@default',
   ): Promise<Task | undefined> {
     const taskData = JSON.stringify({ title })
     try {
@@ -116,30 +120,32 @@ export class GoogleTasksApiClient extends TokenBaseClient {
         `/lists/${taskListId}/tasks`,
         {
           method: 'POST',
-          body: taskData
-        }
+          body: taskData,
+        },
       )
 
       if (response) {
         return response
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error creating a task', error)
     }
   }
 
   async deleteTask(
     task: string | Task,
-    taskListId: string = '@default'
+    taskListId: string = '@default',
   ): Promise<boolean> {
     const id = typeof task === 'string' ? task : task.id
     try {
       await this.request(
         `/lists/${taskListId}/tasks/${id}`,
-        { method: 'DELETE' }
+        { method: 'DELETE' },
       )
       return true
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Error deleting task', error)
     }
     return false

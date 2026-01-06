@@ -15,6 +15,14 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown"
+    "build": "tsdown",
+    "example": "cd example && tsx --env-file=.env"
+  },
+  "dependencies": {
+    "@melledijkstra/toolbox": "link:../toolbox",
+    "arctic": "^3.7.0"
+  },
+  "devDependencies": {
+    "octokit": "^5.0.5"
   }
 }

@@ -1,7 +1,7 @@
-import browser from 'webextension-polyfill'
+import { CodeChallengeMethod, OAuth2Client, generateCodeVerifier, generateState } from 'arctic'
 import { Logger } from '@melledijkstra/toolbox'
-import type { AuthProvider } from './providers'
-import { base64encode, generateRandomString, sha256 } from './utils'
+import type { AuthConfig } from './providers'
+import { base64encode, sha256 } from './utils'
 export type { OauthProvider } from './providers'
 
 type BadAuthReason = 'invalid_token'
@@ -36,12 +36,16 @@ type TokenStore = {
 }
 
 export class AuthClient {
-  provider: AuthProvider
+  private _state: string | undefined
+  private _codeVerifier: string | undefined
+  private _authclient: OAuth2Client
+  provider: AuthConfig
   logger: Logger
 
-  constructor(provider: AuthProvider) {
+  constructor(provider: AuthConfig, redirectUrl: string) {
     this.provider = provider
     this.logger = new Logger(`auth:${provider.name}`)
+    this._authclient = new OAuth2Client(this.provider.clientId, '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', redirectUrl)
   }
 
   get storageKey() {
@@ -51,42 +55,18 @@ export class AuthClient {
   async isAuthenticated(): Promise<boolean> {
     try {
       const token = await this.getAuthToken()
-  
+
       this.logger.log({ token })
-  
+
       return !!token
-    } catch {
+    }
+    catch {
       return false
     }
   }
 
   static isExpired(token: TokenStore) {
     return Date.now() > token.expires_at - 60_000
-  }
-
-  async getAuthTokenChrome(interactive = false): Promise<string | undefined> {
-    const oauth2 = await chrome.identity.getAuthToken({ interactive })
-    return oauth2?.token
-  }
-
-  async deauthenticateChrome(): Promise<boolean> {
-    const token = await this.getAuthTokenChrome(false)
-    try {
-      const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
-        method: 'POST'
-      })
-      if (response.ok) {
-        this.logger.log('revoked token')
-      } else {
-        this.logger.error('failed to revoke token', response)
-      }
-    } catch (error) {
-      this.logger.error('failed to revoke token', error)
-    } finally {
-      await chrome.identity.clearAllCachedAuthTokens()
-      await this.removeAuthTokenFromStorage()
-    }
-    return true
   }
 
   async authenticate(): Promise<boolean> {
@@ -96,17 +76,13 @@ export class AuthClient {
 
   async deauthenticate(): Promise<boolean> {
     this.logger.log('deauthenticating')
-    if (this.provider.name === 'google' && typeof chrome !== 'undefined') {
-      return await this.deauthenticateChrome()
-    }
-
     await this.removeAuthTokenFromStorage()
     return true
   }
 
   async getAuthTokenFromStorage(): Promise<TokenStore | undefined> {
     const { [this.storageKey]: storeToken } = (await browser.storage.local.get(
-      this.storageKey
+      this.storageKey,
     )) as {
       [key: string]: TokenStore | undefined
     }
@@ -118,7 +94,7 @@ export class AuthClient {
   }
 
   async refreshAccessToken(
-    refreshToken: string
+    refreshToken: string,
   ): Promise<TokenResponse | null> {
     const config = this.provider
 
@@ -128,8 +104,8 @@ export class AuthClient {
       body: new URLSearchParams({
         grant_type: 'refresh_token',
         client_id: config.clientId,
-        refresh_token: refreshToken
-      })
+        refresh_token: refreshToken,
+      }),
     })
 
     if (!response.ok) {
@@ -139,7 +115,7 @@ export class AuthClient {
         throw new AuthError(
           `Failed to refresh token: ${errorBody}`,
           'invalid_token',
-          this.provider.name
+          this.provider.name,
         )
       }
       return null
@@ -154,7 +130,7 @@ export class AuthClient {
   async getTokenFromStoreOrRefreshToken(): Promise<string | undefined> {
     const storeToken = await this.getAuthTokenFromStorage()
 
-    let { access_token } = storeToken ?? {};
+    let { access_token } = storeToken ?? {}
     const { refresh_token, expires_at } = storeToken ?? {}
 
     this.logger.log('token in storage?', { storeToken })
@@ -170,7 +146,7 @@ export class AuthClient {
 
         if (!newTokens) {
           throw new Error(
-            'Failed to refresh token - user must re-authenticate.'
+            'Failed to refresh token - user must re-authenticate.',
           )
         }
 
@@ -180,9 +156,10 @@ export class AuthClient {
           newTokens.access_token,
           // if provider doesn’t return a new refresh token, keep the old one
           newTokens.refresh_token ?? refresh_token,
-          newTokens.expires_in
+          newTokens.expires_in,
         )
-      } catch (error) {
+      }
+      catch (error) {
         if (error instanceof AuthError && error.reason === 'invalid_token') {
           // if the error is an AuthError, remove the stored token
           // so that the user can re-authenticate
@@ -198,38 +175,54 @@ export class AuthClient {
   async cacheAuthToken(
     access_token: string,
     refresh_token: string,
-    expires_in: number
+    expires_in: number,
   ) {
     const tokenStore: TokenStore = {
       access_token,
       refresh_token,
-      expires_at: Date.now() + expires_in * 1000
+      expires_at: Date.now() + expires_in * 1000,
     }
 
     await browser.storage.local.set({
-      [this.storageKey]: tokenStore
+      [this.storageKey]: tokenStore,
     })
   }
 
-  async getAuthToken(interactive = false): Promise<string | undefined> {
-    if (this.provider.name === 'google' && typeof chrome !== 'undefined') {
-      // if we are on chrome browser then use the preferred auth token
-      // method that is already build in
-      try {
-        this.logger.log(
-          'trying to retrieve oauth token using build in functionality'
-        )
-        const token = await this.getAuthTokenChrome(interactive)
-        if (token) {
-          return token
-        }
-      } catch (error) {
-        this.logger.warn(
-          `${this.provider.name}: No luck retrieving oauth token using build in functionality, trying manually`,
-          error
-        )
-      }
+  createAuthUrl() {
+    this._state = generateState()
+    this._codeVerifier = generateCodeVerifier()
+    const { scopes } = this.provider
+
+    return this._authclient.createAuthorizationURLWithPKCE(
+      this.provider.authEndpoint,
+      this._state,
+      CodeChallengeMethod.S256,
+      this._codeVerifier,
+      scopes,
+    )
+  }
+
+  async validate(code: string, state: string) {
+    if (!code || !this._state || state !== this._state || !this._codeVerifier) {
+      throw new Error('Code or state mismatch')
     }
+
+    console.log({
+      code,
+      savedCode: this._codeVerifier,
+    })
+
+    return await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, this._codeVerifier)
+  }
+
+  async getAuthToken(interactive = false): Promise<string | undefined> {
+    const url = this.createAuthUrl()
+
+    console.log(url.href)
+
+    return
+
+    /// ///// OLD LOGIC BELOW
 
     const config = this.provider
 
@@ -237,23 +230,24 @@ export class AuthClient {
 
     if (storedToken) {
       this.logger.log('we have a refreshed or stored token, lets use it', {
-        storedToken
+        storedToken,
       })
       return storedToken
-    } else if (!interactive) {
+    }
+    else if (!interactive) {
       this.logger.log(
-        'no token retrieved, but not interactive, so returning nothing'
+        'no token retrieved, but not interactive, so returning nothing',
       )
       return
     }
 
     this.logger.log(
-      'no token retrieved in any way, continue with normal oauth2 flow...'
+      'no token retrieved in any way, continue with normal oauth2 flow...',
     )
 
     const redirectUrl = browser.identity.getRedirectURL()
-    const state = generateRandomString(16)
-    const codeVerifier = generateRandomString(64)
+    // const state = generateRandomString(16)
+    // const codeVerifier = generateRandomString(64)
     const hashed = await sha256(codeVerifier)
     const codeChallenge = base64encode(hashed)
 
@@ -264,7 +258,7 @@ export class AuthClient {
       redirect_uri: redirectUrl,
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
-      state: state
+      state: state,
     })
 
     const authUrl = new URL(config.authEndpoint)
@@ -272,12 +266,12 @@ export class AuthClient {
 
     this.logger.log({
       redirectUrl,
-      authUrl: authUrl.toString()
+      authUrl: authUrl.toString(),
     })
 
     const responseUrl = await browser.identity.launchWebAuthFlow({
       url: authUrl.toString(),
-      interactive
+      interactive,
     })
 
     this.logger.log('responseUrl', responseUrl)
@@ -285,7 +279,7 @@ export class AuthClient {
     if (browser.runtime.lastError || !responseUrl) {
       this.logger.error(
         'Error during authentication:',
-        browser.runtime.lastError
+        browser.runtime.lastError,
       )
       return
     }
@@ -316,8 +310,8 @@ export class AuthClient {
           code: authCode,
           redirect_uri: redirectUrl,
           client_id: config.clientId,
-          code_verifier: codeVerifier
-        })
+          code_verifier: codeVerifier,
+        }),
       })
 
       const tokenData = (await tokenResponse.json()) as TokenResponse
@@ -326,12 +320,13 @@ export class AuthClient {
         this.cacheAuthToken(
           tokenData.access_token,
           tokenData.refresh_token,
-          tokenData.expires_in
+          tokenData.expires_in,
         )
       }
 
       return tokenData.access_token
-    } catch (error) {
+    }
+    catch (error) {
       this.logger.error('Token exchange failed:', error)
     }
   }

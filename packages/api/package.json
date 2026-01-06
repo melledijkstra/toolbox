@@ -15,7 +15,8 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown"
+    "build": "tsdown",
+    "example": "cd examples && tsx"
   },
   "dependencies": {
     "@melledijkstra/auth": "workspace:*",
