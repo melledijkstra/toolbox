@@ -11,9 +11,6 @@ importers:
       '@melledijkstra/config':
         specifier: link:./packages/config
         version: link:packages/config
-      '@melledijkstra/toolbox':
-        specifier: link:./packages/toolbox
-        version: link:packages/toolbox
     devDependencies:
       '@eslint/css':
         specifier: ^0.14.1
@@ -63,6 +60,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@melledijkstra/toolbox':
+        specifier: link:../toolbox
+        version: link:../toolbox
       arctic:
         specifier: ^3.7.0
         version: 3.7.0
@@ -73,7 +73,11 @@ importers:
 
   packages/config: {}
 
-  packages/storage: {}
+  packages/storage:
+    dependencies:
+      '@melledijkstra/toolbox':
+        specifier: link:../toolbox
+        version: link:../toolbox
 
   packages/toolbox: {}
 
