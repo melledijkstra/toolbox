@@ -5,7 +5,7 @@ export const generateRandomString = (length: number) => {
   return values.reduce((acc, x) => acc + possible[x % possible.length], '')
 }
 
-export const sha256 = async (plain: string) => {
+export const sha256 = async (plain: string): Promise<ArrayBuffer> => {
   const encoder = new TextEncoder()
   const data = encoder.encode(plain)
   return await crypto.subtle.digest('SHA-256', data)
