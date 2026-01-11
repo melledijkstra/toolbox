@@ -57,11 +57,14 @@ importers:
       '@melledijkstra/storage':
         specifier: workspace:*
         version: link:../storage
+      '@melledijkstra/toolbox':
+        specifier: workspace:*
+        version: link:../toolbox
 
   packages/auth:
     dependencies:
       '@melledijkstra/toolbox':
-        specifier: link:../toolbox
+        specifier: workspace:*
         version: link:../toolbox
       arctic:
         specifier: ^3.7.0
@@ -76,7 +79,7 @@ importers:
   packages/storage:
     dependencies:
       '@melledijkstra/toolbox':
-        specifier: link:../toolbox
+        specifier: workspace:*
         version: link:../toolbox
 
   packages/toolbox: {}

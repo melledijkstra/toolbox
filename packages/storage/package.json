@@ -18,6 +18,6 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "@melledijkstra/toolbox": "link:../toolbox"
+    "@melledijkstra/toolbox": "workspace:*"
   }
 }

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@melledijkstra/auth": "workspace:*",
-    "@melledijkstra/storage": "workspace:*"
+    "@melledijkstra/storage": "workspace:*",
+    "@melledijkstra/toolbox": "workspace:*"
   }
 }
