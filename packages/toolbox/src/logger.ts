@@ -1,9 +1,19 @@
+export interface LoggerPrinter {
+  log(...data: unknown[]): void
+  error(...data: unknown[]): void
+  warn(...data: unknown[]): void
+  time(label?: string): void
+  timeEnd(label?: string): void
+}
+
 export class Logger {
   public name: string
   public disabled = false
+  private printer: LoggerPrinter
 
-  constructor(name: string, disabled?: boolean) {
+  constructor(name: string, disabled?: boolean, printer?: LoggerPrinter) {
     this.name = name
+    this.printer = printer ?? console
     if (typeof disabled !== 'undefined') {
       this.disabled = disabled
     }
@@ -14,7 +24,7 @@ export class Logger {
 
   private isDisabledByEnv(): boolean {
     const envVar = process.env.NODE_ENV
-    return envVar?.toLowerCase() === 'development'
+    return envVar?.toLowerCase() === 'test'
   }
 
   log(...data: unknown[]) {
@@ -24,25 +34,26 @@ export class Logger {
     if (typeof data?.[0] === 'string' && data[0].includes('%c')) {
       // If the first argument contains a style, we assume it's a styled log
       // and we use console.log directly to preserve the styles
+      // Note: This might not work perfectly with custom printers that don't support %c
       data[0] = `[${this.name}] ${data[0]}`
-      console.log(...data)
+      this.printer.log(...data)
       return
     }
-    console.log(`[${this.name}]`, ...data)
+    this.printer.log(`[${this.name}]`, ...data)
   }
 
   error(...data: unknown[]) {
     if (this.disabled) {
       return
     }
-    console.error(`[${this.name}]`, ...data)
+    this.printer.error(`[${this.name}]`, ...data)
   }
 
   warn(...data: unknown[]) {
     if (this.disabled) {
       return
     }
-    console.warn(`[${this.name}]`, ...data)
+    this.printer.warn(`[${this.name}]`, ...data)
   }
 
   private generateLabel(label?: string): string {
@@ -53,13 +64,13 @@ export class Logger {
     if (this.disabled) {
       return
     }
-    console.time(this.generateLabel(label))
+    this.printer.time(this.generateLabel(label))
   }
 
   timeEnd(label?: string) {
     if (this.disabled) {
       return
     }
-    console.timeEnd(this.generateLabel(label))
+    this.printer.timeEnd(this.generateLabel(label))
   }
 }
