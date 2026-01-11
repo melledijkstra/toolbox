@@ -8,9 +8,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
@@ -19,10 +19,12 @@
     "example": "cd example && tsx --env-file=.env"
   },
   "dependencies": {
-    "@melledijkstra/toolbox": "link:../toolbox",
+    "@melledijkstra/toolbox": "workspace:*",
+    "@melledijkstra/storage": "workspace:*",
     "arctic": "^3.7.0"
   },
   "devDependencies": {
-    "octokit": "^5.0.5"
+    "octokit": "^5.0.5",
+    "@melledijkstra/config": "workspace:*"
   }
 }

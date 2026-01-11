@@ -1,7 +1,7 @@
-import { CodeChallengeMethod, OAuth2Client, generateCodeVerifier, generateState } from 'arctic'
+import { ArcticFetchError, CodeChallengeMethod, OAuth2Client, OAuth2RequestError, generateCodeVerifier, generateState } from 'arctic'
 import { Logger } from '@melledijkstra/toolbox'
+import { IStorage, MemoryCache } from '@melledijkstra/storage'
 import type { AuthConfig } from './providers'
-import { base64encode, sha256 } from './utils'
 export type { OauthProvider } from './providers'
 
 type BadAuthReason = 'invalid_token'
@@ -41,11 +41,24 @@ export class AuthClient {
   private _authclient: OAuth2Client
   provider: AuthConfig
   logger: Logger
+  _storage: IStorage
 
-  constructor(provider: AuthConfig, redirectUrl: string) {
+  constructor(provider: AuthConfig, redirectUrl: string, {
+    client,
+    storage = new MemoryCache(),
+  }: {
+    client?: OAuth2Client
+    storage?: IStorage
+  } = {}) {
     this.provider = provider
     this.logger = new Logger(`auth:${provider.name}`)
-    this._authclient = new OAuth2Client(this.provider.clientId, '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', redirectUrl)
+    this._storage = storage
+    if (client) {
+      this._authclient = client
+    }
+    else {
+      this._authclient = new OAuth2Client(this.provider.clientId, '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', redirectUrl)
+    }
   }
 
   get storageKey() {
@@ -70,27 +83,51 @@ export class AuthClient {
   }
 
   async authenticate(): Promise<boolean> {
-    const token = await this.getAuthToken(true)
+    const token = await this.getAuthToken()
     return !!token
   }
 
   async deauthenticate(): Promise<boolean> {
     this.logger.log('deauthenticating')
-    await this.removeAuthTokenFromStorage()
+    const token = this._storage.get<TokenStore>(this.storageKey)
+    if (token) {
+      await this.revokeAuthToken(token.access_token)
+    }
     return true
   }
 
   async getAuthTokenFromStorage(): Promise<TokenStore | undefined> {
-    const { [this.storageKey]: storeToken } = (await browser.storage.local.get(
-      this.storageKey,
-    )) as {
-      [key: string]: TokenStore | undefined
-    }
+    const storeToken = this._storage.get<TokenStore>(this.storageKey)
     return storeToken
   }
 
-  async removeAuthTokenFromStorage() {
-    await browser.storage.local.remove(this.storageKey)
+  async revokeAuthToken(token: string) {
+    try {
+      await this._authclient.revokeToken(this.provider.tokenEndpoint, token)
+    }
+    catch (e) {
+      if (e instanceof OAuth2RequestError) {
+        // Invalid tokens, credentials, or redirect URI
+        const code = e.code
+        this.logger.warn('Could not revoke token', {
+          code,
+          token,
+        })
+      }
+      else if (e instanceof ArcticFetchError) {
+        // Failed to call `fetch()`
+        this.logger.error('Failed to revoke token', {
+          e,
+          token,
+        })
+      }
+      else {
+        this.logger.error('Unknown error while revoking token', {
+          e,
+          token,
+        })
+      }
+    }
   }
 
   async refreshAccessToken(
@@ -163,7 +200,7 @@ export class AuthClient {
         if (error instanceof AuthError && error.reason === 'invalid_token') {
           // if the error is an AuthError, remove the stored token
           // so that the user can re-authenticate
-          await browser.storage.local.remove(this.storageKey)
+          this._storage.delete(this.storageKey)
           this.getAuthToken()
         }
       }
@@ -183,9 +220,7 @@ export class AuthClient {
       expires_at: Date.now() + expires_in * 1000,
     }
 
-    await browser.storage.local.set({
-      [this.storageKey]: tokenStore,
-    })
+    this._storage.set(this.storageKey, tokenStore, Infinity)
   }
 
   createAuthUrl() {
@@ -207,7 +242,7 @@ export class AuthClient {
       throw new Error('Code or state mismatch')
     }
 
-    console.log({
+    this.logger.log({
       code,
       savedCode: this._codeVerifier,
     })
@@ -215,119 +250,18 @@ export class AuthClient {
     return await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, this._codeVerifier)
   }
 
-  async getAuthToken(interactive = false): Promise<string | undefined> {
+  async getAuthToken(): Promise<string | undefined> {
     const url = this.createAuthUrl()
 
-    console.log(url.href)
+    this.logger.log(url.href)
 
     return
+  }
 
-    /// ///// OLD LOGIC BELOW
-
-    const config = this.provider
-
-    const storedToken = await this.getTokenFromStoreOrRefreshToken()
-
-    if (storedToken) {
-      this.logger.log('we have a refreshed or stored token, lets use it', {
-        storedToken,
-      })
-      return storedToken
-    }
-    else if (!interactive) {
-      this.logger.log(
-        'no token retrieved, but not interactive, so returning nothing',
-      )
-      return
-    }
-
-    this.logger.log(
-      'no token retrieved in any way, continue with normal oauth2 flow...',
-    )
-
-    const redirectUrl = browser.identity.getRedirectURL()
-    // const state = generateRandomString(16)
-    // const codeVerifier = generateRandomString(64)
-    const hashed = await sha256(codeVerifier)
-    const codeChallenge = base64encode(hashed)
-
-    const queryParams = new URLSearchParams({
-      client_id: config.clientId,
-      response_type: 'code',
-      scope: config.scopes.join(' '),
-      redirect_uri: redirectUrl,
-      code_challenge_method: 'S256',
-      code_challenge: codeChallenge,
-      state: state,
-    })
-
-    const authUrl = new URL(config.authEndpoint)
-    authUrl.search = queryParams.toString()
-
-    this.logger.log({
-      redirectUrl,
-      authUrl: authUrl.toString(),
-    })
-
-    const responseUrl = await browser.identity.launchWebAuthFlow({
-      url: authUrl.toString(),
-      interactive,
-    })
-
-    this.logger.log('responseUrl', responseUrl)
-
-    if (browser.runtime.lastError || !responseUrl) {
-      this.logger.error(
-        'Error during authentication:',
-        browser.runtime.lastError,
-      )
-      return
-    }
-
-    const responseParams = new URL(responseUrl).searchParams
-    const authCode = responseParams.get('code')
-    const responseError = responseParams.get('error')
-    const responseState = responseParams.get('state')
-
-    this.logger.log('auth code', authCode)
-
-    if (responseError) {
-      this.logger.error('Error during authentication:', responseError)
-      return
-    }
-
-    if (!authCode || state !== responseState) {
-      this.logger.error('No auth code found or state mismatch!')
-      return
-    }
-
-    try {
-      const tokenResponse = await fetch(config.tokenEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: authCode,
-          redirect_uri: redirectUrl,
-          client_id: config.clientId,
-          code_verifier: codeVerifier,
-        }),
-      })
-
-      const tokenData = (await tokenResponse.json()) as TokenResponse
-
-      if (tokenData.refresh_token) {
-        this.cacheAuthToken(
-          tokenData.access_token,
-          tokenData.refresh_token,
-          tokenData.expires_in,
-        )
-      }
-
-      return tokenData.access_token
-    }
-    catch (error) {
-      this.logger.error('Token exchange failed:', error)
+  getContext() {
+    return {
+      state: this._state,
+      codeVerifier: this._codeVerifier,
     }
   }
 }

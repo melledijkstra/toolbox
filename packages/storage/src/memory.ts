@@ -1,4 +1,5 @@
 import { Logger, ILogger } from '@melledijkstra/toolbox'
+import { IStorage } from './storage.interface'
 
 const logger = new Logger('cache')
 
@@ -31,7 +32,7 @@ export function get(key: string) {
   }
 }
 
-export function set(key: string, value: unknown, ttl = MIN_5): void {
+export function set(key: string, value: unknown, ttl = Infinity): void {
   cache[key] = {
     data: value,
     timestamp: Date.now(),
@@ -74,29 +75,78 @@ export function withCache<T, A extends unknown[]>(
   return cachedFunction
 }
 
-export class MemoryCache implements ILogger {
+export class MemoryCache implements IStorage, ILogger {
   logger = new Logger('MemoryCache')
-  private cache: Record<string, CacheItem<unknown> | undefined> = {}
+  private _cache: Record<string, CacheItem<unknown> | undefined> = {}
 
   get<T>(key: string): T | undefined {
-    const cachedItem = this.cache[key]
+    const cachedItem = this._cache[key]
     if (!cachedItem) {
       return
     }
 
     if (Date.now() - cachedItem.timestamp > cachedItem.ttl) {
-      delete this.cache[key]
+      delete this._cache[key]
     }
     else {
       return cachedItem.data as T
     }
   }
 
-  set(key: string, value: unknown, ttl = MIN_5) {
-    this.cache[key] = {
+  set(key: string, value: unknown, ttl = Infinity) {
+    this._cache[key] = {
       data: value,
       timestamp: Date.now(), // store insertion time
-      ttl: ttl ?? MIN_5,
+      ttl: ttl,
     }
+  }
+
+  delete(key: string): void {
+    delete this._cache[key]
+  }
+
+  clear(): void {
+    this._cache = {}
+  }
+
+  isExpired(key: string): boolean {
+    const cachedItem = this._cache[key]
+    if (!cachedItem) {
+      return true // No item means it's "expired" or never existed
+    }
+
+    if (Date.now() - cachedItem.timestamp > cachedItem.ttl) {
+      delete this._cache[key]
+      return true
+    }
+
+    return false
+  }
+
+  has(key: string): boolean {
+    const cachedItem = this._cache[key]
+
+    if (!cachedItem) {
+      return false
+    }
+
+    if (this.isExpired(key)) {
+      return false
+    }
+
+    if (Date.now() - cachedItem.timestamp > cachedItem.ttl) {
+      delete this._cache[key]
+      return false
+    }
+
+    return true
+  }
+
+  keys(): string[] {
+    return Object.keys(this._cache)
+  }
+
+  size(): number {
+    return Object.keys(this._cache).length
   }
 }

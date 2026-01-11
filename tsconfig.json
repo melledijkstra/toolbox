@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "node",
+    "target": "esnext",
+    "types": ["vitest/globals"]
+  }
+}

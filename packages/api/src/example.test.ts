@@ -1,9 +1,9 @@
-import { expect } from 'vitest'
-import { it } from 'vitest'
-import { describe } from 'vitest'
+import { BaseClient } from './baseclient'
 
-describe('test', () => {
-  it('test', () => {
-    expect(true).toBe(true)
+describe('BaseClient', () => {
+  it('should not be able to instantiate', () => {
+    expect(() => {
+      new BaseClient('http://example.api')
+    }).toThrow()
   })
 })

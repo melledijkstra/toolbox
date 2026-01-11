@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest'
+import { Mock } from 'vitest'
 import { Logger } from './logger'
 
 describe('Logger', () => {
