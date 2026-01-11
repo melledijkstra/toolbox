@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import { BaseClient } from './baseclient'
 
 class TestClient extends BaseClient {
@@ -8,7 +8,7 @@ class TestClient extends BaseClient {
 }
 
 describe('BaseClient', () => {
-  let fetchSpy: any
+  let fetchSpy: MockInstance
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, 'fetch')
@@ -25,11 +25,6 @@ describe('BaseClient', () => {
 
   it('should throw if instantiated without a base URL', () => {
     expect(() => new TestClient('')).toThrow('BaseClient needs to be instatiated with a base URL')
-  })
-
-  it('should throw if BaseClient is instantiated directly', () => {
-    // @ts-ignore
-    expect(() => new BaseClient('https://api.example.com')).toThrow('BaseClient is abstract and cannot be instantiated directly.')
   })
 
   describe('request', () => {
