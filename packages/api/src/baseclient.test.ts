@@ -7,6 +7,14 @@ class TestClient extends BaseClient {
   }
 }
 
+const createMockResponse = (overrides?: Partial<Response>): Response => ({
+  ok: true,
+  status: 200,
+  headers: { get: () => 'application/json' },
+  json: async () => ({ data: 'test' }),
+  ...overrides,
+} as unknown as Response)
+
 describe('BaseClient', () => {
   let fetchSpy: MockInstance
 
@@ -30,11 +38,7 @@ describe('BaseClient', () => {
   describe('request', () => {
     it('should make a request to the correct URL', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        headers: { get: () => 'application/json' },
-        json: async () => ({ data: 'test' }),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse())
 
       await client.request('/test')
       expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining({
@@ -46,11 +50,7 @@ describe('BaseClient', () => {
 
     it('should handle query parameters', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        headers: { get: () => 'application/json' },
-        json: async () => ({ data: 'test' }),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse())
 
       const params = new URLSearchParams({ foo: 'bar' })
       await client.request('/test', undefined, params)
@@ -60,12 +60,7 @@ describe('BaseClient', () => {
     it('should return JSON data if response is ok and json', async () => {
       const client = new TestClient('https://api.example.com')
       const mockData = { data: 'test' }
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => mockData,
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse({ json: async () => mockData }))
 
       const result = await client.request('/test')
       expect(result).toEqual(mockData)
@@ -73,12 +68,7 @@ describe('BaseClient', () => {
 
     it('should return undefined if response is not ok', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: false,
-        status: 404,
-        headers: { get: () => 'application/json' },
-        json: async () => ({ error: 'not found' }),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse({ ok: false, status: 404 }))
 
       const result = await client.request('/test')
       expect(result).toBeUndefined()
@@ -86,12 +76,7 @@ describe('BaseClient', () => {
 
     it('should return undefined if status is 204', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        status: 204,
-        headers: { get: () => 'application/json' },
-        json: async () => ({}),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse({ status: 204 }))
 
       const result = await client.request('/test')
       expect(result).toBeUndefined()
@@ -99,12 +84,9 @@ describe('BaseClient', () => {
 
     it('should return undefined if content type is not json', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'text/plain' },
-        json: async () => ({}),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse({
+        headers: { get: () => 'text/plain' } as unknown as Headers,
+      }))
 
       const result = await client.request('/test')
       expect(result).toBeUndefined()
@@ -112,11 +94,7 @@ describe('BaseClient', () => {
 
     it('should merge custom headers', async () => {
       const client = new TestClient('https://api.example.com')
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        headers: { get: () => 'application/json' },
-        json: async () => ({ data: 'test' }),
-      } as Response)
+      fetchSpy.mockResolvedValue(createMockResponse())
 
       await client.request('/test', {
         headers: {

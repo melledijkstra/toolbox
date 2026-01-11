@@ -10,24 +10,24 @@ describe('generateRandomString', () => {
   })
 
   it('should generate different strings', () => {
-    const str1 = generateRandomString(10)
-    const str2 = generateRandomString(10)
+    const str1 = generateRandomString(20)
+    const str2 = generateRandomString(20)
     expect(str1).not.toBe(str2)
   })
 })
 
 describe('sha256', () => {
   it('should generate a SHA-256 hash', async () => {
-    const plain = 'test'
-    const hash = await sha256(plain)
+    const seed = 'test'
+    const hash = await sha256(seed)
     expect(hash).toBeInstanceOf(ArrayBuffer)
     expect(hash.byteLength).toBe(32) // SHA-256 produces 32 bytes
   })
 
   it('should produce the same hash for the same input', async () => {
-    const plain = 'test'
-    const hash1 = await sha256(plain)
-    const hash2 = await sha256(plain)
+    const seed = 'test'
+    const hash1 = await sha256(seed)
+    const hash2 = await sha256(seed)
     // Compare ArrayBuffers
     expect(new Uint8Array(hash1)).toEqual(new Uint8Array(hash2))
   })
