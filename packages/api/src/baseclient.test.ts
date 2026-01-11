@@ -72,17 +72,17 @@ describe('BaseClient', () => {
     })
 
     it('should return undefined if response is not ok', async () => {
-        const client = new TestClient('https://api.example.com')
-        fetchSpy.mockResolvedValue({
-          ok: false,
-          status: 404,
-          headers: { get: () => 'application/json' },
-          json: async () => ({ error: 'not found' }),
-        } as Response)
+      const client = new TestClient('https://api.example.com')
+      fetchSpy.mockResolvedValue({
+        ok: false,
+        status: 404,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ error: 'not found' }),
+      } as Response)
 
-        const result = await client.request('/test')
-        expect(result).toBeUndefined()
-      })
+      const result = await client.request('/test')
+      expect(result).toBeUndefined()
+    })
 
     it('should return undefined if status is 204', async () => {
       const client = new TestClient('https://api.example.com')
@@ -111,24 +111,24 @@ describe('BaseClient', () => {
     })
 
     it('should merge custom headers', async () => {
-        const client = new TestClient('https://api.example.com')
-        fetchSpy.mockResolvedValue({
-          ok: true,
-          headers: { get: () => 'application/json' },
-          json: async () => ({ data: 'test' }),
-        } as Response)
+      const client = new TestClient('https://api.example.com')
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: 'test' }),
+      } as Response)
 
-        await client.request('/test', {
-            headers: {
-                'Authorization': 'Bearer token'
-            }
-        })
-        expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining({
-          headers: expect.objectContaining({
-            accept: 'application/json',
-            'Authorization': 'Bearer token'
-          }),
-        }))
+      await client.request('/test', {
+        headers: {
+          Authorization: 'Bearer token',
+        },
       })
+      expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/test', expect.objectContaining({
+        headers: expect.objectContaining({
+          accept: 'application/json',
+          Authorization: 'Bearer token',
+        }),
+      }))
+    })
   })
 })
