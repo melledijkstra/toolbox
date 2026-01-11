@@ -52,11 +52,7 @@ Use the following scripts defined in the root `package.json`:
 *   **Tools:** `eslint` (v9+), `typescript-eslint`, `@stylistic/eslint-plugin`.
 *   **Rule:** Fix linting errors before submitting.
 
-### Cryptography
-*   **Implementation:** Use the global `crypto` object. Do not use `window.crypto` to ensure compatibility across Node.js and browser environments.
-
 ## Dependency Management
-
 *   **Workspaces:** Use the `workspace:*` protocol for internal dependencies within the monorepo.
 *   **DevDependencies:** Do not duplicate `devDependencies` (like `tsdown`, `typescript`, `vitest`) in sub-packages if they are already defined and managed at the project root.
 
