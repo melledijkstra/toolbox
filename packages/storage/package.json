@@ -18,6 +18,10 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "@melledijkstra/toolbox": "link:../toolbox"
+    "@melledijkstra/toolbox": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "^0.18.3",
+    "typescript": "^5.9.3"
   }
 }

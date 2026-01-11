@@ -57,11 +57,21 @@ importers:
       '@melledijkstra/storage':
         specifier: workspace:*
         version: link:../storage
+      '@melledijkstra/toolbox':
+        specifier: workspace:*
+        version: link:../toolbox
+    devDependencies:
+      tsdown:
+        specifier: ^0.18.3
+        version: 0.18.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/auth:
     dependencies:
       '@melledijkstra/toolbox':
-        specifier: link:../toolbox
+        specifier: workspace:*
         version: link:../toolbox
       arctic:
         specifier: ^3.7.0
@@ -70,16 +80,36 @@ importers:
       octokit:
         specifier: ^5.0.5
         version: 5.0.5
+      tsdown:
+        specifier: ^0.18.3
+        version: 0.18.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/config: {}
 
   packages/storage:
     dependencies:
       '@melledijkstra/toolbox':
-        specifier: link:../toolbox
+        specifier: workspace:*
         version: link:../toolbox
+    devDependencies:
+      tsdown:
+        specifier: ^0.18.3
+        version: 0.18.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
-  packages/toolbox: {}
+  packages/toolbox:
+    devDependencies:
+      tsdown:
+        specifier: ^0.18.3
+        version: 0.18.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 

@@ -20,6 +20,11 @@
   },
   "dependencies": {
     "@melledijkstra/auth": "workspace:*",
-    "@melledijkstra/storage": "workspace:*"
+    "@melledijkstra/storage": "workspace:*",
+    "@melledijkstra/toolbox": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "^0.18.3",
+    "typescript": "^5.9.3"
   }
 }

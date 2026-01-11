@@ -19,10 +19,12 @@
     "example": "cd example && tsx --env-file=.env"
   },
   "dependencies": {
-    "@melledijkstra/toolbox": "link:../toolbox",
+    "@melledijkstra/toolbox": "workspace:*",
     "arctic": "^3.7.0"
   },
   "devDependencies": {
-    "octokit": "^5.0.5"
+    "octokit": "^5.0.5",
+    "tsdown": "^0.18.3",
+    "typescript": "^5.9.3"
   }
 }
