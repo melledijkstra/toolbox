@@ -39,11 +39,11 @@ export class AuthClient {
   private _state: string | undefined
   private _codeVerifier: string | undefined
   private _authclient: OAuth2Client
+  private _storage: IStorage
+  private _logger: Logger
   provider: AuthConfig
-  logger: Logger
-  _storage: IStorage
 
-  constructor(provider: AuthConfig, redirectUrl: string, {
+  constructor(provider: AuthConfig, redirectUrl: string, clientSecret: string, {
     client,
     storage = new MemoryCache(),
   }: {
@@ -51,13 +51,15 @@ export class AuthClient {
     storage?: IStorage
   } = {}) {
     this.provider = provider
-    this.logger = new Logger(`auth:${provider.name}`)
+    this._logger = new Logger(`auth:${provider.name}`)
     this._storage = storage
     if (client) {
       this._authclient = client
     }
     else {
-      this._authclient = new OAuth2Client(this.provider.clientId, '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', redirectUrl)
+      // clientSecret is passed but might be empty for public clients (like browser extensions)
+      // if arctic requires it, it should be provided.
+      this._authclient = new OAuth2Client(this.provider.clientId, clientSecret, redirectUrl)
     }
   }
 
@@ -69,7 +71,7 @@ export class AuthClient {
     try {
       const token = await this.getAuthToken()
 
-      this.logger.log({ token })
+      this._logger.log({ token })
 
       return !!token
     }
@@ -88,7 +90,7 @@ export class AuthClient {
   }
 
   async deauthenticate(): Promise<boolean> {
-    this.logger.log('deauthenticating')
+    this._logger.log('deauthenticating')
     const token = this._storage.get<TokenStore>(this.storageKey)
     if (token) {
       await this.revokeAuthToken(token.access_token)
@@ -109,25 +111,31 @@ export class AuthClient {
       if (e instanceof OAuth2RequestError) {
         // Invalid tokens, credentials, or redirect URI
         const code = e.code
-        this.logger.warn('Could not revoke token', {
+        this._logger.warn('Could not revoke token', {
           code,
           token,
         })
       }
       else if (e instanceof ArcticFetchError) {
         // Failed to call `fetch()`
-        this.logger.error('Failed to revoke token', {
+        this._logger.error('Failed to revoke token', {
           e,
           token,
         })
       }
       else {
-        this.logger.error('Unknown error while revoking token', {
+        this._logger.error('Unknown error while revoking token', {
           e,
           token,
         })
       }
     }
+    const storeToken = await this._storage.get<TokenStore>(this.storageKey)
+    return storeToken
+  }
+
+  async removeAuthTokenFromStorage() {
+    await this._storage.remove(this.storageKey)
   }
 
   async refreshAccessToken(
@@ -147,7 +155,7 @@ export class AuthClient {
 
     if (!response.ok) {
       const errorBody = await response.text()
-      this.logger.error('Refresh token request failed:', errorBody)
+      this._logger.error('Refresh token request failed:', errorBody)
       if (errorBody.includes('invalid_grant')) {
         throw new AuthError(
           `Failed to refresh token: ${errorBody}`,
@@ -159,7 +167,7 @@ export class AuthClient {
     }
 
     const tokenData = (await response.json()) as TokenResponse
-    this.logger.log('refreshed token data', tokenData)
+    this._logger.log('refreshed token data', tokenData)
 
     return tokenData
   }
@@ -170,14 +178,14 @@ export class AuthClient {
     let { access_token } = storeToken ?? {}
     const { refresh_token, expires_at } = storeToken ?? {}
 
-    this.logger.log('token in storage?', { storeToken })
+    this._logger.log('token in storage?', { storeToken })
 
     // Subtract some buffer (60 seconds) to ensure we refresh before actual expiry
     const isTokenExpired = !expires_at || Date.now() > expires_at - 60_000
 
     if (isTokenExpired && refresh_token) {
       try {
-        this.logger.log('token expired, trying to refresh it')
+        this._logger.log('token expired, trying to refresh it')
         // Refresh the token
         const newTokens = await this.refreshAccessToken(refresh_token)
 
@@ -188,7 +196,7 @@ export class AuthClient {
         }
 
         access_token = newTokens.access_token
-        this.logger.log('refreshed new access token, storing it and continue')
+        this._logger.log('refreshed new access token, storing it and continue')
         this.cacheAuthToken(
           newTokens.access_token,
           // if provider doesn’t return a new refresh token, keep the old one
@@ -200,8 +208,7 @@ export class AuthClient {
         if (error instanceof AuthError && error.reason === 'invalid_token') {
           // if the error is an AuthError, remove the stored token
           // so that the user can re-authenticate
-          this._storage.delete(this.storageKey)
-          this.getAuthToken()
+          await this._storage.remove(this.storageKey)
         }
       }
     }
@@ -220,7 +227,7 @@ export class AuthClient {
       expires_at: Date.now() + expires_in * 1000,
     }
 
-    this._storage.set(this.storageKey, tokenStore, Infinity)
+    this._storage.set(this.storageKey, tokenStore)
   }
 
   createAuthUrl() {
@@ -242,7 +249,7 @@ export class AuthClient {
       throw new Error('Code or state mismatch')
     }
 
-    this.logger.log({
+    this._logger.log({
       code,
       savedCode: this._codeVerifier,
     })
@@ -250,18 +257,34 @@ export class AuthClient {
     return await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, this._codeVerifier)
   }
 
-  async getAuthToken(): Promise<string | undefined> {
-    const url = this.createAuthUrl()
-
-    this.logger.log(url.href)
-
-    return
-  }
-
   getContext() {
     return {
       state: this._state,
       codeVerifier: this._codeVerifier,
     }
+  }
+
+  async getAuthToken(interactive = false): Promise<string | undefined> {
+    const storedToken = await this.getTokenFromStoreOrRefreshToken()
+
+    if (storedToken) {
+      this._logger.log('we have a refreshed or stored token, lets use it', {
+        storedToken,
+      })
+      return storedToken
+    }
+    else if (!interactive) {
+      this._logger.log(
+        'no token retrieved, but not interactive, so returning nothing',
+      )
+      return
+    }
+
+    this._logger.log(
+      'no token retrieved in any way, continue with normal oauth2 flow...',
+    )
+
+    const url = this.createAuthUrl()
+    this._logger.log('Generated Auth URL:', url.href)
   }
 }

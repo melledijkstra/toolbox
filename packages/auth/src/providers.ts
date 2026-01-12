@@ -10,24 +10,36 @@ export interface AuthConfig {
 
 export class GoogleAuthConfig implements AuthConfig {
   name: OauthProvider = 'google'
-  clientId = process.env.GOOGLE_CLIENT_ID ?? ''
+  clientId: string
   scopes = ['openid', 'profile']
   authEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth'
   tokenEndpoint = 'https://oauth2.googleapis.com/token'
+
+  constructor(clientId: string) {
+    this.clientId = clientId
+  }
 }
 
 export class SpotifyAuthConfig implements AuthConfig {
   name: OauthProvider = 'spotify'
-  clientId = process.env.SPOTIFY_CLIENT_ID ?? ''
+  clientId: string
   scopes = []
   authEndpoint = 'https://accounts.spotify.com/authorize'
   tokenEndpoint = 'https://accounts.spotify.com/api/token'
+
+  constructor(clientId: string) {
+    this.clientId = clientId
+  }
 }
 
 export class FitbitAuthConfig implements AuthConfig {
   name: OauthProvider = 'fitbit'
-  clientId = process.env.FITBIT_CLIENT_ID ?? ''
+  clientId: string
   scopes = []
   authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
   tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
+
+  constructor(clientId: string) {
+    this.clientId = clientId
+  }
 }
