@@ -13,3 +13,4 @@ gha-creds-*.json
 
 # rollup visualizer file
 stats.html
+stats-*.html
