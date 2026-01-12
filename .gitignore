@@ -10,3 +10,6 @@ coverage/
 gha-creds-*.json
 
 .DS_Store
+
+# rollup visualizer file
+stats.html
