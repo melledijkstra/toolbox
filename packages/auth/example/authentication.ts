@@ -1,20 +1,18 @@
-import * as arctic from 'arctic'
 import { createServer } from 'http'
+import { AuthClient, GoogleAuthConfig } from '../src'
 
-const clientId = 'Ov23lioctam5x2hDw2bM'
-const clientSecret = '24b0a4017da6bfead67affd9107f4d08a9c5e402'
-const scopes = ['user']
+// const clientId = process.env.GITHUB_CLIENT_ID
+// const clientSecret = process.env.GITHUB_CLIENT_SECRET
+// const scopes = ['user']
 
 const PORT = 8000
 const redirectUrl = `http://localhost:${PORT}/oauth/callback`
 
-const authClient = new arctic.GitHub(clientId, clientSecret, redirectUrl)
+const authClient = new AuthClient(new GoogleAuthConfig(), redirectUrl)
 
 console.log('Trying to authenticate...')
 
-const state = arctic.generateState()
-
-const authUrl = authClient.createAuthorizationURL(state, scopes)
+const authUrl = authClient.createAuthUrl()
 
 console.log(authUrl.href)
 
@@ -24,10 +22,11 @@ const server = createServer(async (req, res) => {
   // Filter for the callback route
   if (requestUrl?.pathname === '/oauth/callback') {
     const code = requestUrl.searchParams.get('code')!
+    const state = requestUrl.searchParams.get('state')
 
     try {
       // 5. Exchange Code for Tokens
-      const tokens = await authClient.validateAuthorizationCode(code)
+      const tokens = await authClient.validate(code, state)
 
       console.log('\nSUCCESS! Save these credentials safely:')
       console.log('-----------------------------------------')

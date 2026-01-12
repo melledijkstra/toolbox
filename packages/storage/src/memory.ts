@@ -1,4 +1,4 @@
-import { Logger, ILogger } from '@melledijkstra/toolbox'
+import { Logger } from '@melledijkstra/toolbox'
 import { IStorage } from './storage.interface'
 
 const logger = new Logger('cache')
@@ -75,7 +75,7 @@ export function withCache<T, A extends unknown[]>(
   return cachedFunction
 }
 
-export class MemoryCache implements IStorage, ILogger {
+export class MemoryCache implements IStorage {
   logger = new Logger('MemoryCache')
   private _cache: Record<string, CacheItem<unknown> | undefined> = {}
 
@@ -93,7 +93,7 @@ export class MemoryCache implements IStorage, ILogger {
     }
   }
 
-  set(key: string, value: unknown, ttl = Infinity) {
+  async set(key: string, value: unknown, ttl = Infinity) {
     this._cache[key] = {
       data: value,
       timestamp: Date.now(), // store insertion time
@@ -101,11 +101,11 @@ export class MemoryCache implements IStorage, ILogger {
     }
   }
 
-  delete(key: string): void {
+  async delete(key: string): Promise<void> {
     delete this._cache[key]
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
     this._cache = {}
   }
 

@@ -1,7 +1,7 @@
-import { ArcticFetchError, CodeChallengeMethod, OAuth2Client, OAuth2RequestError, generateCodeVerifier, generateState } from 'arctic'
+import { ArcticFetchError, CodeChallengeMethod, OAuth2RequestError, generateCodeVerifier, generateState, Google, GitHub, Spotify, OAuth2Client, OAuth2Tokens } from 'arctic'
 import { Logger } from '@melledijkstra/toolbox'
 import { IStorage, MemoryCache } from '@melledijkstra/storage'
-import type { AuthConfig } from './providers'
+import type { ArcticClient, AuthConfig } from './providers'
 export type { OauthProvider } from './providers'
 
 type BadAuthReason = 'invalid_token'
@@ -20,15 +20,6 @@ class AuthError extends Error {
 
 const OAUTH2_STORAGE_KEY = 'oauth2'
 
-type TokenResponse = {
-  access_token: string
-  expires_in: number
-  id_token: string
-  refresh_token?: string
-  scope?: string
-  token_type?: string
-}
-
 type TokenStore = {
   access_token: string
   expires_at: number
@@ -38,28 +29,32 @@ type TokenStore = {
 export class AuthClient {
   private _state: string | undefined
   private _codeVerifier: string | undefined
-  private _authclient: OAuth2Client
+  private _authclient: ArcticClient
   private _storage: IStorage
   private _logger: Logger
   provider: AuthConfig
 
-  constructor(provider: AuthConfig, redirectUrl: string, clientSecret: string, {
-    client,
+  constructor(provider: AuthConfig, redirectUrl: string, {
     storage = new MemoryCache(),
   }: {
-    client?: OAuth2Client
     storage?: IStorage
   } = {}) {
     this.provider = provider
     this._logger = new Logger(`auth:${provider.name}`)
     this._storage = storage
-    if (client) {
-      this._authclient = client
-    }
-    else {
-      // clientSecret is passed but might be empty for public clients (like browser extensions)
-      // if arctic requires it, it should be provided.
-      this._authclient = new OAuth2Client(this.provider.clientId, clientSecret, redirectUrl)
+    switch (provider.name) {
+      case 'google':
+        this._authclient = new Google(provider.clientId, provider.clientSecret, redirectUrl)
+        break
+      case 'spotify':
+        this._authclient = new Spotify(provider.clientId, provider.clientSecret, redirectUrl)
+        break
+      case 'fitbit':
+        this._authclient = new OAuth2Client(provider.clientId, provider.clientSecret, redirectUrl)
+        break
+      case 'github':
+        this._authclient = new GitHub(provider.clientId, provider.clientSecret, redirectUrl)
+        break
     }
   }
 
@@ -91,9 +86,9 @@ export class AuthClient {
 
   async deauthenticate(): Promise<boolean> {
     this._logger.log('deauthenticating')
-    const token = this._storage.get<TokenStore>(this.storageKey)
+    const token = await this._storage.get<OAuth2Tokens>(this.storageKey)
     if (token) {
-      await this.revokeAuthToken(token.access_token)
+      await this.revokeAuthToken(token.accessToken())
     }
     return true
   }
@@ -105,7 +100,12 @@ export class AuthClient {
 
   async revokeAuthToken(token: string) {
     try {
-      await this._authclient.revokeToken(this.provider.tokenEndpoint, token)
+      if (this._authclient instanceof Google) {
+        await this._authclient.revokeToken(token)
+      }
+      else {
+        throw new Error('Not implemented for other providers!')
+      }
     }
     catch (e) {
       if (e instanceof OAuth2RequestError) {
@@ -135,39 +135,23 @@ export class AuthClient {
   }
 
   async removeAuthTokenFromStorage() {
-    await this._storage.remove(this.storageKey)
+    await this._storage.delete(this.storageKey)
   }
 
   async refreshAccessToken(
     refreshToken: string,
-  ): Promise<TokenResponse | null> {
-    const config = this.provider
+  ): Promise<OAuth2Tokens | null> {
+    let tokenData: OAuth2Tokens
 
-    const response = await fetch(config.tokenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: config.clientId,
-        refresh_token: refreshToken,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorBody = await response.text()
-      this._logger.error('Refresh token request failed:', errorBody)
-      if (errorBody.includes('invalid_grant')) {
-        throw new AuthError(
-          `Failed to refresh token: ${errorBody}`,
-          'invalid_token',
-          this.provider.name,
-        )
-      }
-      return null
+    if (this._authclient instanceof Google
+      || this._authclient instanceof GitHub
+      || this._authclient instanceof Spotify
+    ) {
+      tokenData = await this._authclient.refreshAccessToken(refreshToken)
     }
-
-    const tokenData = (await response.json()) as TokenResponse
-    this._logger.log('refreshed token data', tokenData)
+    else {
+      tokenData = await this._authclient.refreshAccessToken(this.provider.tokenEndpoint, refreshToken, this.provider.scopes)
+    }
 
     return tokenData
   }
@@ -195,20 +179,20 @@ export class AuthClient {
           )
         }
 
-        access_token = newTokens.access_token
+        access_token = newTokens.accessToken()
         this._logger.log('refreshed new access token, storing it and continue')
         this.cacheAuthToken(
-          newTokens.access_token,
+          newTokens.accessToken(),
           // if provider doesn’t return a new refresh token, keep the old one
-          newTokens.refresh_token ?? refresh_token,
-          newTokens.expires_in,
+          newTokens.refreshToken() ?? refresh_token,
+          newTokens.accessTokenExpiresInSeconds(),
         )
       }
       catch (error) {
         if (error instanceof AuthError && error.reason === 'invalid_token') {
           // if the error is an AuthError, remove the stored token
           // so that the user can re-authenticate
-          await this._storage.remove(this.storageKey)
+          await this._storage.delete(this.storageKey)
         }
       }
     }
@@ -230,21 +214,27 @@ export class AuthClient {
     this._storage.set(this.storageKey, tokenStore)
   }
 
-  createAuthUrl() {
+  createAuthUrl(): URL {
     this._state = generateState()
     this._codeVerifier = generateCodeVerifier()
     const { scopes } = this.provider
 
-    return this._authclient.createAuthorizationURLWithPKCE(
-      this.provider.authEndpoint,
-      this._state,
-      CodeChallengeMethod.S256,
-      this._codeVerifier,
-      scopes,
-    )
+    if (this._authclient instanceof OAuth2Client) {
+      return this._authclient.createAuthorizationURLWithPKCE(
+        this.provider.authEndpoint, this._state, CodeChallengeMethod.S256,
+        this._codeVerifier, scopes,
+      )
+    }
+    else if (this._authclient instanceof Google
+      || this._authclient instanceof Spotify) {
+      return this._authclient.createAuthorizationURL(this._state, this._codeVerifier, scopes)
+    }
+    else if (this._authclient instanceof GitHub) {
+      return this._authclient.createAuthorizationURL(this._state, scopes)
+    }
   }
 
-  async validate(code: string, state: string) {
+  async validate(code: string, state: string): Promise<OAuth2Tokens> {
     if (!code || !this._state || state !== this._state || !this._codeVerifier) {
       throw new Error('Code or state mismatch')
     }
@@ -254,7 +244,11 @@ export class AuthClient {
       savedCode: this._codeVerifier,
     })
 
-    return await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, this._codeVerifier)
+    if (this._authclient instanceof OAuth2Client) {
+      return await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, this._codeVerifier)
+    }
+
+    return await this._authclient.validateAuthorizationCode(code, this._codeVerifier)
   }
 
   getContext() {

@@ -9,7 +9,7 @@ export interface IStorage {
    * @param key - Storage key
    * @returns The stored value or undefined if not found
    */
-  get<T>(key: string): T | undefined
+  get<T>(key: string): Promise<T | undefined>
 
   /**
    * Store a value in storage
@@ -18,18 +18,18 @@ export interface IStorage {
    * @param value - Value to store
    * @param ttl - Time to live in milliseconds (optional)
    */
-  set<T>(key: string, value: T, ttl?: number): void
+  set<T>(key: string, value: T, ttl?: number): Promise<void>
 
   /**
    * Delete a specific item from storage
    * @param key - Storage key to delete
    */
-  delete(key: string): void
+  delete(key: string): Promise<void>
 
   /**
    * Clear all items from storage
    */
-  clear(): void
+  clear(): Promise<void>
 
   /**
    * Check if a key exists in storage

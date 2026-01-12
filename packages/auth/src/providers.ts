@@ -1,45 +1,42 @@
-export type OauthProvider = 'google' | 'spotify' | 'fitbit'
+import { Google, GitHub, OAuth2Client, Spotify } from 'arctic'
+
+export type ArcticClient = Google | GitHub | Spotify | OAuth2Client
+
+export type OauthProvider = 'google' | 'spotify' | 'fitbit' | 'github'
 
 export interface AuthConfig {
   name: OauthProvider
   clientId: string
+  clientSecret?: string
   scopes: string[]
-  authEndpoint: string
-  tokenEndpoint: string
+  authEndpoint?: string
+  tokenEndpoint?: string
 }
 
 export class GoogleAuthConfig implements AuthConfig {
   name: OauthProvider = 'google'
-  clientId: string
+  clientId = process.env.GOOGLE_CLIENT_ID!
+  clientSecret = process.env.GOOGLE_CLIENT_SECRET!
   scopes = ['openid', 'profile']
-  authEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth'
-  tokenEndpoint = 'https://oauth2.googleapis.com/token'
+}
 
-  constructor(clientId: string) {
-    this.clientId = clientId
-  }
+export class GithubAuthConfig implements AuthConfig {
+  name: OauthProvider = 'github'
+  clientId = process.env.GITHUB_CLIENT_ID!
+  clientSecret = process.env.GITHUB_CLIENT_SECRET!
+  scopes = ['user']
 }
 
 export class SpotifyAuthConfig implements AuthConfig {
   name: OauthProvider = 'spotify'
-  clientId: string
+  clientId = process.env.SPOTIFY_CLIENT_ID!
   scopes = []
-  authEndpoint = 'https://accounts.spotify.com/authorize'
-  tokenEndpoint = 'https://accounts.spotify.com/api/token'
-
-  constructor(clientId: string) {
-    this.clientId = clientId
-  }
 }
 
 export class FitbitAuthConfig implements AuthConfig {
   name: OauthProvider = 'fitbit'
-  clientId: string
+  clientId = process.env.FITBIT_CLIENT_ID!
   scopes = []
   authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
   tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
-
-  constructor(clientId: string) {
-    this.clientId = clientId
-  }
 }
