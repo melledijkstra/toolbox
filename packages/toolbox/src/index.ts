@@ -1,3 +1,4 @@
 export * from './logger'
 export * from './date'
-export * from './time'
+export * from './time/timer'
+export * from './time/utils'
