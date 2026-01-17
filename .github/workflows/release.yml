@@ -31,7 +31,7 @@ jobs:
               echo "Packing $pkg..."
               cd "$pkg"
               # Create the tarball and move it to the assets folder
-              pnpm pack
+              pnpm pack --out "%s-${{ github.ref_name }}.tgz"
               mv *.tgz ../../release-assets/
               cd ../..
             fi
