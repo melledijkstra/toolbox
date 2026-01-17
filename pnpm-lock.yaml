@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      '@melledijkstra/config':
-        specifier: workspace:*
-        version: link:packages/config
     devDependencies:
       '@eslint/css':
         specifier: ^0.14.1
