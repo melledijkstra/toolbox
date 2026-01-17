@@ -3,7 +3,6 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
-    "module": "preserve",
     "target": "esnext",
     "types": ["vitest/globals"]
   }

@@ -3,11 +3,23 @@ import { calculateRemainingDays, formatSeconds, getBrowserLocale, getTime, getTi
 class FakeNavigator {
   language = 'nl-NL'
   languages = [this.language]
+
+  constructor(locale?: string) {
+    if (locale) {
+      this.language = locale
+      this.languages = [this.language]
+    }
+  }
+}
+
+function setFakeLocale(locale?: string) {
+  vi.stubGlobal('navigator', new FakeNavigator(locale))
 }
 
 describe('Time Utilities', () => {
   beforeAll(() => {
     vi.useFakeTimers()
+    vi.stubGlobal('navigator', new FakeNavigator())
   })
 
   afterAll(() => {
@@ -16,8 +28,6 @@ describe('Time Utilities', () => {
 
   describe('getBrowserLocale', () => {
     it('should be able to retrieve the browser locale', () => {
-      vi.stubGlobal('navigator', new FakeNavigator())
-
       const locale = getBrowserLocale()
 
       expect(locale).toBe('nl-NL')
@@ -78,7 +88,9 @@ describe('Time Utilities', () => {
 
   describe('renderTimezone', () => {
     it('should be able to render timezone', () => {
-      const fakeDateTime = new Date(2026, 1, 1, 12, 0, 0, 0)
+      setFakeLocale('nl-NL')
+
+      const fakeDateTime = new Date('2026-02-01T11:00:00.000Z')
       vi.setSystemTime(fakeDateTime)
 
       expect(renderTimezone('Europe/Amsterdam')).toBe('12:00')
