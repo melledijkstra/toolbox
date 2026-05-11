@@ -5,7 +5,7 @@ export class BaseClient {
     baseUrl: string,
   ) {
     if (!baseUrl) {
-      throw new Error('BaseClient needs to be instatiated with a base URL')
+      throw new Error('BaseClient needs to be instantiated with a base URL')
     }
 
     this.BASE_URL = baseUrl
@@ -17,7 +17,7 @@ export class BaseClient {
     }
   }
 
-  _getHeaders(): HeadersInit {
+  async _getHeaders(): Promise<HeadersInit> {
     return {
       accept: 'application/json',
     }
@@ -34,7 +34,7 @@ export class BaseClient {
       url.search = queryParams.toString()
     }
 
-    const headers = this._getHeaders()
+    const headers = await this._getHeaders()
 
     const response = await fetch(url.toString(), {
       ...config,

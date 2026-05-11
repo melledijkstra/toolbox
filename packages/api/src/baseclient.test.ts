@@ -32,7 +32,7 @@ describe('BaseClient', () => {
   })
 
   it('should throw if instantiated without a base URL', () => {
-    expect(() => new TestClient('')).toThrow('BaseClient needs to be instatiated with a base URL')
+    expect(() => new TestClient('')).toThrow('BaseClient needs to be instantiated with a base URL')
   })
 
   describe('request', () => {

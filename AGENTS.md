@@ -47,6 +47,8 @@ Use the following scripts defined in the root `package.json`:
 - **Mocking:** Use specific types for mocks (e.g., `MockInstance` from `vitest`) instead of `any`.
 - **Constraints:** Avoid `@ts-ignore`. If a test violates TS constraints, omit the test or refactor.
 
+Execute `pnpm test run` to run tests and exit. Without `run`, it will watch for changes.
+
 ### Linting
 
 - **Tools:** `eslint`, `typescript-eslint`, `@stylistic/eslint-plugin`.

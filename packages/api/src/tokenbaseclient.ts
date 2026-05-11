@@ -1,11 +1,13 @@
 import { BaseClient } from './baseclient'
 
+export type TokenProvider = string | (() => string | Promise<string | undefined>)
+
 export class TokenBaseClient extends BaseClient {
-  protected token: string
+  protected token: TokenProvider
 
   constructor(
     baseUrl: string,
-    token: string,
+    token: TokenProvider,
   ) {
     super(baseUrl)
 
@@ -18,10 +20,17 @@ export class TokenBaseClient extends BaseClient {
     }
   }
 
-  _getHeaders(): HeadersInit {
+  async _getHeaders(): Promise<HeadersInit> {
+    const token = typeof this.token === 'function' ? await this.token() : this.token
+    const baseHeaders = await super._getHeaders()
+
+    if (!token) {
+      return baseHeaders
+    }
+
     return {
-      ...super._getHeaders(),
-      Authorization: `Bearer ${this.token}`,
+      ...baseHeaders,
+      Authorization: `Bearer ${token}`,
     }
   }
 
@@ -29,7 +38,7 @@ export class TokenBaseClient extends BaseClient {
     return this.token
   }
 
-  setAccessToken(token: string) {
+  setAccessToken(token: TokenProvider) {
     this.token = token
   }
 }

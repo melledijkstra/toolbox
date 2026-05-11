@@ -5,7 +5,7 @@ describe('AuthClient', () => {
   it('should generate auth URL correctly', async () => {
     const client = new AuthClient(new GoogleAuthConfig(), 'http://localhost:3000/callback')
 
-    const authUrl = client.createAuthUrl()
+    const authUrl = await client.createAuthUrl()
 
     const { state } = client.getContext()
 
