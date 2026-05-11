@@ -123,7 +123,7 @@ export class MemoryCache implements IStorage {
     return false
   }
 
-  has(key: string): boolean {
+  async has(key: string): Promise<boolean> {
     const cachedItem = this._cache[key]
 
     if (!cachedItem) {
@@ -142,11 +142,11 @@ export class MemoryCache implements IStorage {
     return true
   }
 
-  keys(): string[] {
+  async keys(): Promise<string[]> {
     return Object.keys(this._cache)
   }
 
-  size(): number {
+  async size(): Promise<number> {
     return Object.keys(this._cache).length
   }
 }

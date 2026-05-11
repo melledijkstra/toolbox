@@ -26,22 +26,34 @@ type TokenStore = {
   refresh_token: string
 }
 
+export interface AuthFlowHandler {
+  /**
+   * Opens the authentication URL and returns the redirect URL with the code.
+   * @param url The authorization URL to open
+   */
+  open(url: URL): Promise<URL>
+}
+
 export class AuthClient {
-  private _state: string | undefined
-  private _codeVerifier: string | undefined
-  private _authclient: ArcticClient
-  private _storage: IStorage
-  private _logger: Logger
+  protected _state: string | undefined
+  protected _codeVerifier: string | undefined
+  protected _authclient: ArcticClient
+  protected _storage: IStorage
+  protected _logger: Logger
+  protected _handler: AuthFlowHandler | undefined
   provider: AuthConfig
 
   constructor(provider: AuthConfig, redirectUrl: string, {
     storage = new MemoryCache(),
+    handler,
   }: {
     storage?: IStorage
+    handler?: AuthFlowHandler
   } = {}) {
     this.provider = provider
     this._logger = new Logger(`auth:${provider.name}`)
     this._storage = storage
+    this._handler = handler
     switch (provider.name) {
       case 'google':
         this._authclient = new Google(provider.clientId, provider.clientSecret, redirectUrl)
@@ -280,5 +292,30 @@ export class AuthClient {
 
     const url = this.createAuthUrl()
     this._logger.log('Generated Auth URL:', url.href)
+
+    if (this._handler) {
+      try {
+        const redirectUrl = await this._handler.open(url)
+        const code = redirectUrl.searchParams.get('code')
+        const state = redirectUrl.searchParams.get('state')
+
+        if (code && state) {
+          const tokens = await this.validate(code, state)
+          // Store the tokens
+          await this.cacheAuthToken(
+            tokens.accessToken(),
+            tokens.refreshToken() ?? '', // Handle potential missing refresh token
+            tokens.accessTokenExpiresInSeconds(),
+          )
+          return tokens.accessToken()
+        }
+        else {
+          this._logger.error('Redirect URL missing code or state', { href: redirectUrl.href })
+        }
+      }
+      catch (error) {
+        this._logger.error('Auth flow failed', { error })
+      }
+    }
   }
 }

@@ -21,10 +21,10 @@
   },
   "dependencies": {
     "@melledijkstra/toolbox": "workspace:*",
-    "@melledijkstra/storage": "workspace:*",
-    "arctic": "^3.7.0"
+    "@melledijkstra/storage": "workspace:*"
   },
   "devDependencies": {
+    "arctic": "^3.7.0",
     "octokit": "^5.0.5",
     "@melledijkstra/config": "workspace:*"
   }

@@ -36,17 +36,17 @@ export interface IStorage {
    * @param key - Storage key
    * @returns True if key exists, false otherwise
    */
-  has(key: string): boolean
+  has(key: string): Promise<boolean>
 
   /**
    * Get all keys stored in storage
    * @returns Array of all keys
    */
-  keys(): string[]
+  keys(): Promise<string[]>
 
   /**
    * Get the number of items in storage
    * @returns Number of stored items
    */
-  size(): number
+  size(): Promise<number>
 }

@@ -13,5 +13,6 @@ if (process.env.ANALYZE === 'true') {
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm', 'cjs'],
+  dts: true,
   plugins,
 })
