@@ -19,13 +19,25 @@ type LocationResponse = {
 export type LocationInfo = Omit<LocationResponse, 'status' | 'message'>
 
 const LOCATION_API_URL
-  = 'http://ip-api.com/json?fields=status,message,country,countryCode,region,regionName,city,lat,lon,timezone'
+  = 'https://ipapi.co/json/'
 
 async function fetchGeolocation(): Promise<LocationResponse | undefined> {
   const response = await fetch(LOCATION_API_URL)
 
   if (response.ok) {
-    return (await response.json()) as LocationResponse
+    const data = await response.json()
+    // Map ipapi.co response to the original LocationResponse shape
+    return {
+      status: 'success',
+      country: data.country_name,
+      countryCode: data.country_code,
+      region: data.region_code,
+      regionName: data.region,
+      city: data.city,
+      lat: data.latitude,
+      lon: data.longitude,
+      timezone: data.timezone,
+    } as LocationResponse
   }
 }
 
