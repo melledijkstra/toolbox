@@ -6,7 +6,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,10 +23,10 @@
   },
   "dependencies": {
     "@melledijkstra/toolbox": "workspace:*",
-    "@melledijkstra/storage": "workspace:*"
+    "@melledijkstra/storage": "workspace:*",
+    "arctic": "^3.7.0"
   },
   "devDependencies": {
-    "arctic": "^3.7.0",
     "octokit": "^5.0.5",
     "@melledijkstra/config": "workspace:*"
   }
