@@ -30,7 +30,8 @@
     "turbo": "^2.7.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.51.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "yalc": "^1.0.0-pre.53"
   },
   "keywords": [
     "toolbox",
