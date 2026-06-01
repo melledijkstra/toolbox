@@ -27,10 +27,10 @@
     "globals": "^17.0.0",
     "tsdown": "^0.19.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.7.2",
+    "turbo": "^2.9.14",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.51.0",
-    "vitest": "^4.0.16",
+    "vitest": "^4.1.0",
     "yalc": "^1.0.0-pre.53"
   },
   "keywords": [
