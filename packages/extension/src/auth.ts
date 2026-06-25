@@ -1,35 +1,71 @@
 import * as browser from 'webextension-polyfill'
-import { AuthConfig, AuthClient as BaseAuthClient } from '@melledijkstra/auth'
+import { AuthConfig, AuthClient as BaseAuthClient, AuthFlowHandler } from '@melledijkstra/auth'
 import { ExtensionStorage } from './storage'
+
+class ExtensionAuthFlowHandler implements AuthFlowHandler {
+  async open(url: URL): Promise<URL> {
+    const resultUrl = await browser.identity.launchWebAuthFlow({
+      url: url.toString(),
+      interactive: true,
+    })
+    return new URL(resultUrl)
+  }
+}
 
 export class AuthClient extends BaseAuthClient {
   constructor(provider: AuthConfig) {
     const redirectUrl = browser.identity.getRedirectURL()
-    console.log({ redirectUrl })
     super(provider, redirectUrl, {
       storage: new ExtensionStorage(),
+      handler: new ExtensionAuthFlowHandler(),
     })
   }
 
-  async getAuthToken(interactive?: boolean): Promise<string | undefined> {
-    const authUrl = this.createAuthUrl()
+  async getAuthTokenChrome(interactive = false): Promise<string | undefined> {
+    const oauth2 = await chrome.identity.getAuthToken({ interactive })
+    return oauth2?.token
+  }
 
-    console.log(authUrl.toString())
+  async deauthenticateChrome(): Promise<boolean> {
+    const token = await this.getAuthTokenChrome(false)
+    if (token) {
+      try {
+        const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+          method: 'POST'
+        })
+        if (response.ok) {
+          this._logger.log('revoked token')
+        } else {
+          this._logger.error('failed to revoke token', response)
+        }
+      } catch (error) {
+        this._logger.error('failed to revoke token', error)
+      }
+    }
+    await chrome.identity.clearAllCachedAuthTokens()
+    await this.removeAuthTokenFromStorage()
+    return true
+  }
 
-    const resultUrl = await browser.identity.launchWebAuthFlow({
-      url: authUrl.toString(),
-      interactive,
-    })
+  async getAuthToken(interactive = false): Promise<string | undefined> {
+    if (this.provider.name === 'google' && typeof chrome !== 'undefined' && chrome.identity) {
+      try {
+        this._logger.debug('trying to retrieve oauth token using build in functionality')
+        const token = await this.getAuthTokenChrome(interactive)
+        if (token) return token
+      } catch (error) {
+        this._logger.warn(`${this.provider.name}: No luck retrieving oauth token using build in functionality, trying manually`, error)
+      }
+    }
 
-    // "https://kaeibbjbbioodhkpgclmhdhnoggcikhi.chromiumapp.org/?code=6846e1a8a2923335166107ac273f815110879f58&state=g1wRIMSuJQ4DJXNAsKkNBo9CVShp9nLS61u3YoOZc8c#_=_"
+    return super.getAuthToken(interactive)
+  }
 
-    const url = new URL(resultUrl)
-
-    const code = url.searchParams.get('code')
-    const state = url.searchParams.get('state')
-
-    const tokenData = await this.validate(code, state)
-
-    return tokenData.accessToken()
+  async deauthenticate(): Promise<boolean> {
+    this._logger.log('deauthenticating')
+    if (this.provider.name === 'google' && typeof chrome !== 'undefined' && chrome.identity) {
+      return await this.deauthenticateChrome()
+    }
+    return super.deauthenticate()
   }
 }
