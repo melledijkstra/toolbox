@@ -2,6 +2,7 @@ export interface LoggerPrinter {
   log(...data: unknown[]): void
   error(...data: unknown[]): void
   warn(...data: unknown[]): void
+  debug?(...data: unknown[]): void
   time(label?: string): void
   timeEnd(label?: string): void
 }
@@ -54,6 +55,13 @@ export class Logger {
       return
     }
     this.printer.warn(`[${this.name}]`, ...data)
+  }
+
+  debug(...data: unknown[]) {
+    if (this.disabled) {
+      return
+    }
+    this.printer.debug?.(`[${this.name}]`, ...data) ?? this.printer.log(`[${this.name}]`, ...data)
   }
 
   private generateLabel(label?: string): string {
