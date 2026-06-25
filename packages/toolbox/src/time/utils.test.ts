@@ -72,10 +72,23 @@ describe('Time Utilities', () => {
       expect(millisecondsToTime(1000 * 60 * 60)).toBe('60:00') // 1 hour
       expect(millisecondsToTime(1000 * 60 * 60 * 24)).toBe('1440:00') // 1 day
     })
+
+    it('should format milliseconds less than a second', () => {
+      expect(millisecondsToTime(500)).toBe('0:00')
+    })
+
+    it('should format milliseconds more than a second', () => {
+      expect(millisecondsToTime(1500)).toBe('0:01')
+    })
+
+    it('should handle negative milliseconds', () => {
+      expect(millisecondsToTime(-5000)).toBe('-0:05')
+    })
   })
 
   describe('formatSeconds', () => {
     it('should format seconds', () => {
+      expect(formatSeconds(0)).toBe('0:00')
       expect(formatSeconds(1)).toBe('0:01')
       expect(formatSeconds(3)).toBe('0:03')
       expect(formatSeconds(59)).toBe('0:59')
@@ -83,6 +96,14 @@ describe('Time Utilities', () => {
       expect(formatSeconds(60 * 20)).toBe('20:00')
       expect(formatSeconds(60 * 60)).toBe('60:00')
       expect(formatSeconds(60 * 60 * 24)).toBe('1440:00')
+    })
+
+    it('should handle fractional seconds', () => {
+      expect(formatSeconds(1.5)).toBe('0:01')
+    })
+
+    it('should handle negative seconds', () => {
+      expect(formatSeconds(-5)).toBe('-0:05')
     })
   })
 
