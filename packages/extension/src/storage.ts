@@ -22,16 +22,17 @@ export class ExtensionStorage implements IStorage {
   }
 
   async has(key: string): Promise<boolean> {
-    const keys = await this.storageArea.getKeys()
+    const keys = await this.keys()
     return keys.includes(key)
   }
 
-  keys(): Promise<string[]> {
-    return this.storageArea.getKeys()
+  async keys(): Promise<string[]> {
+    const allItems = await this.storageArea.get(null)
+    return Object.keys(allItems)
   }
 
   async size(): Promise<number> {
-    const keys = await this.storageArea.getKeys()
+    const keys = await this.keys()
     return keys.length
   }
 
