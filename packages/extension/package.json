@@ -16,7 +16,8 @@
   },
   "scripts": {
     "dev": "tsdown --watch",
-    "build": "tsdown"
+    "build": "tsdown",
+    "test": "vitest"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.33",

@@ -50,22 +50,22 @@ export class AuthClient {
     storage?: IStorage
     handler?: AuthFlowHandler
   } = {}) {
-    this.provider = provider
     this._logger = new Logger(`auth:${provider.name}`)
+    this.provider = provider
     this._storage = storage
     this._handler = handler
     switch (provider.name) {
       case 'google':
-        this._authclient = new Google(provider.clientId, provider.clientSecret, redirectUrl)
+        this._authclient = new Google(provider.clientId, provider.clientSecret ?? '', redirectUrl)
         break
       case 'spotify':
-        this._authclient = new Spotify(provider.clientId, provider.clientSecret, redirectUrl)
+        this._authclient = new Spotify(provider.clientId, provider.clientSecret ?? null, redirectUrl)
         break
       case 'fitbit':
-        this._authclient = new OAuth2Client(provider.clientId, provider.clientSecret, redirectUrl)
+        this._authclient = new OAuth2Client(provider.clientId, provider.clientSecret ?? null, redirectUrl)
         break
       case 'github':
-        this._authclient = new GitHub(provider.clientId, provider.clientSecret, redirectUrl)
+        this._authclient = new GitHub(provider.clientId, provider.clientSecret ?? '', redirectUrl)
         break
     }
   }
@@ -241,7 +241,7 @@ export class AuthClient {
     return `${OAUTH2_STORAGE_KEY}.state.${this.provider.name}`
   }
 
-  async createAuthUrl(): Promise<URL> {
+  async createAuthUrl(): Promise<URL | undefined> {
     this._state = generateState()
     this._codeVerifier = generateCodeVerifier()
     const { scopes } = this.provider
@@ -253,7 +253,7 @@ export class AuthClient {
 
     if (this._authclient instanceof OAuth2Client) {
       return this._authclient.createAuthorizationURLWithPKCE(
-        this.provider.authEndpoint, this._state, CodeChallengeMethod.S256,
+        this.provider.authEndpoint ?? '', this._state, CodeChallengeMethod.S256,
         this._codeVerifier, scopes,
       )
     }
@@ -281,7 +281,7 @@ export class AuthClient {
 
     let tokens: OAuth2Tokens
     if (this._authclient instanceof OAuth2Client) {
-      tokens = await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint, code, savedCodeVerifier)
+      tokens = await this._authclient.validateAuthorizationCode(this.provider.tokenEndpoint ?? '', code, savedCodeVerifier)
     }
     else {
       tokens = await this._authclient.validateAuthorizationCode(code, savedCodeVerifier)
@@ -321,6 +321,12 @@ export class AuthClient {
     )
 
     const url = await this.createAuthUrl()
+
+    if (!url) {
+      this._logger.error('Failed to create auth URL')
+      return
+    }
+
     this._logger.log('Generated Auth URL:', url.href)
 
     if (this._handler) {

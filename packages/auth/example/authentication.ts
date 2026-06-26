@@ -12,7 +12,7 @@ const authClient = new AuthClient(new GoogleAuthConfig(), redirectUrl)
 
 console.log('Trying to authenticate...')
 
-const authUrl = authClient.createAuthUrl()
+const authUrl = await authClient.createAuthUrl()
 
 console.log(authUrl.href)
 

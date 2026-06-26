@@ -2,7 +2,7 @@ export interface LoggerPrinter {
   log(...data: unknown[]): void
   error(...data: unknown[]): void
   warn(...data: unknown[]): void
-  debug?(...data: unknown[]): void
+  debug(...data: unknown[]): void
   time(label?: string): void
   timeEnd(label?: string): void
 }
@@ -12,9 +12,9 @@ export class Logger {
   public disabled = false
   private printer: LoggerPrinter
 
-  constructor(name: string, disabled?: boolean, printer?: LoggerPrinter) {
+  constructor(name: string, disabled?: boolean, printer: LoggerPrinter = console) {
     this.name = name
-    this.printer = printer ?? console
+    this.printer = printer
     if (typeof disabled !== 'undefined') {
       this.disabled = disabled
     }
@@ -61,7 +61,7 @@ export class Logger {
     if (this.disabled) {
       return
     }
-    this.printer.debug?.(`[${this.name}]`, ...data) ?? this.printer.log(`[${this.name}]`, ...data)
+    this.printer.debug(`[${this.name}]`, ...data)
   }
 
   private generateLabel(label?: string): string {

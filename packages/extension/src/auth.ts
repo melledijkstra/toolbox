@@ -31,14 +31,16 @@ export class AuthClient extends BaseAuthClient {
     if (token) {
       try {
         const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
-          method: 'POST'
+          method: 'POST',
         })
         if (response.ok) {
           this._logger.log('revoked token')
-        } else {
+        }
+        else {
           this._logger.error('failed to revoke token', response)
         }
-      } catch (error) {
+      }
+      catch (error) {
         this._logger.error('failed to revoke token', error)
       }
     }
@@ -53,7 +55,8 @@ export class AuthClient extends BaseAuthClient {
         this._logger.debug('trying to retrieve oauth token using build in functionality')
         const token = await this.getAuthTokenChrome(interactive)
         if (token) return token
-      } catch (error) {
+      }
+      catch (error) {
         this._logger.warn(`${this.provider.name}: No luck retrieving oauth token using build in functionality, trying manually`, error)
       }
     }

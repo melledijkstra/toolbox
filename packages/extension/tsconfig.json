@@ -2,7 +2,7 @@
   "compilerOptions": {
     "moduleResolution": "bundler",
     "module": "preserve",
-    "types": ["@types/chrome"],
+    "types": ["@types/chrome", "vitest/globals"],
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "noEmit": true,
     "esModuleInterop": true,
