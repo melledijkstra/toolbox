@@ -41,6 +41,7 @@ export class AuthClient {
   protected _storage: IStorage
   protected _logger: Logger
   protected _handler: AuthFlowHandler | undefined
+  protected _tokenPromise: Promise<string | undefined> | null = null
   provider: AuthConfig
 
   constructor(provider: AuthConfig, redirectUrl: string, {
@@ -87,8 +88,8 @@ export class AuthClient {
     }
   }
 
-  static isExpired(token: TokenStore) {
-    return Date.now() > token.expires_at - 60_000
+  static isExpired(token?: TokenStore) {
+    return !token || Date.now() > token.expires_at - 60_000
   }
 
   async authenticate(): Promise<boolean> {
@@ -162,7 +163,7 @@ export class AuthClient {
         tokenData = await this._authclient.refreshAccessToken(refreshToken)
       }
       else {
-        tokenData = await this._authclient.refreshAccessToken(this.provider.tokenEndpoint, refreshToken, this.provider.scopes)
+        tokenData = await this._authclient.refreshAccessToken(this.provider.tokenEndpoint ?? '', refreshToken, this.provider.scopes)
       }
 
       return tokenData
@@ -176,51 +177,66 @@ export class AuthClient {
   }
 
   async getTokenFromStoreOrRefreshToken(): Promise<string | undefined> {
-    const storeToken = await this.getAuthTokenFromStorage()
-
-    let { access_token } = storeToken ?? {}
-    const { refresh_token, expires_at } = storeToken ?? {}
-
-    this._logger.log('token in storage?', { storeToken })
-
-    // Subtract some buffer (60 seconds) to ensure we refresh before actual expiry
-    const isTokenExpired = !expires_at || Date.now() > expires_at - 60_000
-
-    if (isTokenExpired && refresh_token) {
-      try {
-        this._logger.log('token expired, trying to refresh it')
-        // Refresh the token
-        const newTokens = await this.refreshAccessToken(refresh_token)
-
-        if (!newTokens) {
-          throw new Error(
-            'Failed to refresh token - user must re-authenticate.',
-          )
-        }
-
-        access_token = newTokens.accessToken()
-        this._logger.log('refreshed new access token, storing it and continue')
-        this.cacheAuthToken(
-          newTokens.accessToken(),
-          // if provider doesn’t return a new refresh token, keep the old one
-          newTokens.refreshToken() ?? refresh_token,
-          newTokens.accessTokenExpiresInSeconds(),
-        )
-      }
-      catch (error) {
-        if (error instanceof AuthError && error.reason === 'invalid_token') {
-          this._logger.warn('Refresh token is invalid, clearing storage')
-          // if the error is an AuthError, remove the stored token
-          // so that the user can re-authenticate
-          await this._storage.delete(this.storageKey)
-        }
-        else {
-          this._logger.error('Failed to refresh access token', { error })
-        }
-      }
+    if (this._tokenPromise) {
+      this._logger.log('token retrieval already in progress, returning pending promise')
+      return this._tokenPromise
     }
 
-    return access_token
+    this._tokenPromise = (async () => {
+      try {
+        const storeToken = await this.getAuthTokenFromStorage()
+        let access_token = storeToken?.access_token
+
+        this._logger.debug('token in storage?', !!storeToken)
+
+        // Subtract some buffer (60 seconds) to ensure we refresh before actual expiry
+        const isTokenExpired = AuthClient.isExpired(storeToken)
+
+        const { refresh_token } = storeToken ?? {}
+
+        if (isTokenExpired && refresh_token) {
+          try {
+            this._logger.log('token expired, trying to refresh it')
+            // Refresh the token
+            const newTokens = await this.refreshAccessToken(refresh_token)
+
+            if (!newTokens) {
+              throw new Error(
+                'Failed to refresh token - user must re-authenticate.',
+              )
+            }
+
+            const newAccessToken = newTokens.accessToken()
+            this._logger.log('refreshed new access token, storing it and continue')
+            await this.cacheAuthToken(
+              newAccessToken,
+              // if provider doesn’t return a new refresh token, keep the old one
+              newTokens.refreshToken() ?? refresh_token,
+              newTokens.accessTokenExpiresInSeconds(),
+            )
+            access_token = newAccessToken
+          }
+          catch (error) {
+            if (error instanceof AuthError && error.reason === 'invalid_token') {
+              this._logger.warn('Refresh token is invalid, clearing storage')
+              // if the error is an AuthError, remove the stored token
+              // so that the user can re-authenticate
+              await this._storage.delete(this.storageKey)
+            }
+            else {
+              this._logger.error('Failed to refresh access token', { error })
+            }
+          }
+        }
+
+        return access_token
+      }
+      finally {
+        this._tokenPromise = null
+      }
+    })()
+
+    return this._tokenPromise
   }
 
   async cacheAuthToken(
@@ -304,9 +320,7 @@ export class AuthClient {
     const storedToken = await this.getTokenFromStoreOrRefreshToken()
 
     if (storedToken) {
-      this._logger.log('we have a refreshed or stored token, lets use it', {
-        storedToken,
-      })
+      this._logger.log('using stored token')
       return storedToken
     }
     else if (!interactive) {

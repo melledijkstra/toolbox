@@ -36,7 +36,7 @@ export class SpotifyAuthConfig implements AuthConfig {
 export class FitbitAuthConfig implements AuthConfig {
   name: OauthProvider = 'fitbit'
   clientId = process.env.FITBIT_CLIENT_ID!
-  scopes = []
+  scopes = ['activity', 'sleep']
   authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
   tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
 }

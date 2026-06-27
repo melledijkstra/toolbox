@@ -106,6 +106,38 @@ describe('AuthClient', () => {
       expect((client as unknown as { _authclient: { refreshAccessToken: (...args: unknown[]) => Promise<unknown> }, _storage: { delete: (key: string) => void } })._storage.delete).toHaveBeenCalledWith(client.storageKey)
       expect(token).toBe('expired-token')
     })
+
+    it('getTokenFromStoreOrRefreshToken should deduplicate concurrent refresh calls', async () => {
+      const mockStore = {
+        access_token: 'expired-token',
+        expires_at: Date.now() - 10000,
+        refresh_token: 'refresh-token',
+      }
+      vi.spyOn(client, 'getAuthTokenFromStorage').mockResolvedValue(mockStore)
+
+      const mockTokens = {
+        accessToken: () => 'new-access-token',
+        refreshToken: () => 'new-refresh-token',
+        accessTokenExpiresInSeconds: () => 3600,
+      } as unknown as OAuth2Tokens
+
+      const refreshSpy = vi.spyOn(client, 'refreshAccessToken').mockImplementation(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+        return mockTokens
+      })
+      vi.spyOn(client, 'cacheAuthToken').mockResolvedValue(undefined)
+
+      const [token1, token2, token3] = await Promise.all([
+        client.getTokenFromStoreOrRefreshToken(),
+        client.getTokenFromStoreOrRefreshToken(),
+        client.getTokenFromStoreOrRefreshToken(),
+      ])
+
+      expect(refreshSpy).toHaveBeenCalledTimes(1)
+      expect(token1).toBe('new-access-token')
+      expect(token2).toBe('new-access-token')
+      expect(token3).toBe('new-access-token')
+    })
   })
 
   describe('authentication flows (getAuthToken)', () => {
