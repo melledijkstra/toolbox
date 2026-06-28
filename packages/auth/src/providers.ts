@@ -4,39 +4,76 @@ export type ArcticClient = Google | GitHub | Spotify | OAuth2Client
 
 export type OauthProvider = 'google' | 'spotify' | 'fitbit' | 'github'
 
-export interface AuthConfig {
+export abstract class AuthConfig {
   name: OauthProvider
-  clientId: string
-  clientSecret?: string
+
   scopes: string[]
   authEndpoint?: string
   tokenEndpoint?: string
+
+  constructor(name: OauthProvider, scopes: string[]) {
+    this.name = name
+    this.scopes = scopes
+  }
+
+  abstract get clientId(): string
+  abstract get clientSecret(): string | undefined
 }
 
-export class GoogleAuthConfig implements AuthConfig {
-  name: OauthProvider = 'google'
-  clientId = process.env.GOOGLE_CLIENT_ID!
-  clientSecret = process.env.GOOGLE_CLIENT_SECRET!
-  scopes = ['openid', 'profile']
+export class GoogleAuthConfig extends AuthConfig {
+  constructor() {
+    super('google', ['openid', 'profile'])
+  }
+
+  get clientId(): string {
+    return process.env.GOOGLE_CLIENT_ID!
+  }
+
+  get clientSecret(): string | undefined {
+    return process.env.GOOGLE_CLIENT_SECRET!
+  }
 }
 
-export class GithubAuthConfig implements AuthConfig {
-  name: OauthProvider = 'github'
-  clientId = process.env.GITHUB_CLIENT_ID!
-  clientSecret = process.env.GITHUB_CLIENT_SECRET!
-  scopes = ['user']
+export class GithubAuthConfig extends AuthConfig {
+  constructor() {
+    super('github', ['user'])
+  }
+
+  get clientId(): string {
+    return process.env.GITHUB_CLIENT_ID!
+  }
+
+  get clientSecret(): string | undefined {
+    return process.env.GITHUB_CLIENT_SECRET!
+  }
 }
 
-export class SpotifyAuthConfig implements AuthConfig {
-  name: OauthProvider = 'spotify'
-  clientId = process.env.SPOTIFY_CLIENT_ID!
-  scopes = []
+export class SpotifyAuthConfig extends AuthConfig {
+  constructor() {
+    super('spotify', ['user'])
+  }
+
+  get clientId(): string {
+    return process.env.SPOTIFY_CLIENT_ID!
+  }
+
+  get clientSecret(): string | undefined {
+    return process.env.SPOTIFY_CLIENT_SECRET!
+  }
 }
 
-export class FitbitAuthConfig implements AuthConfig {
-  name: OauthProvider = 'fitbit'
-  clientId = process.env.FITBIT_CLIENT_ID!
-  scopes = ['activity', 'sleep']
-  authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
-  tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
+export class FitbitAuthConfig extends AuthConfig {
+  constructor() {
+    super('fitbit', ['activity', 'sleep'])
+    this.authEndpoint = 'https://www.fitbit.com/oauth2/authorize'
+    this.tokenEndpoint = 'https://api.fitbit.com/oauth2/token'
+  }
+
+  get clientId(): string {
+    return process.env.FITBIT_CLIENT_ID!
+  }
+
+  get clientSecret(): string | undefined {
+    return process.env.FITBIT_CLIENT_SECRET!
+  }
 }

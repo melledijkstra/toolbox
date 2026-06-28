@@ -1,22 +1,8 @@
 import { IStorage, MemoryCache } from '@melledijkstra/storage'
 import { Logger } from '@melledijkstra/toolbox'
-import { ArcticFetchError, CodeChallengeMethod, generateCodeVerifier, generateState, GitHub, Google, OAuth2Client, OAuth2RequestError, OAuth2Tokens, Spotify } from 'arctic'
+import { ArcticFetchError, CodeChallengeMethod, generateCodeVerifier, generateState, GitHub, Google, OAuth2Client, OAuth2RequestError, OAuth2Tokens, Spotify, UnexpectedErrorResponseBodyError } from 'arctic'
 import type { ArcticClient, AuthConfig } from './providers'
 export type { OauthProvider } from './providers'
-
-type BadAuthReason = 'invalid_token'
-
-class AuthError extends Error {
-  provider: string
-  reason: BadAuthReason
-
-  constructor(message: string, reason: BadAuthReason, provider: string) {
-    super(message)
-    this.name = 'AuthError'
-    this.reason = reason
-    this.provider = provider
-  }
-}
 
 const OAUTH2_STORAGE_KEY = 'oauth2'
 
@@ -62,11 +48,12 @@ export class AuthClient {
       case 'spotify':
         this._authclient = new Spotify(provider.clientId, provider.clientSecret ?? null, redirectUrl)
         break
-      case 'fitbit':
-        this._authclient = new OAuth2Client(provider.clientId, provider.clientSecret ?? null, redirectUrl)
-        break
       case 'github':
         this._authclient = new GitHub(provider.clientId, provider.clientSecret ?? '', redirectUrl)
+        break
+      case 'fitbit':
+      default:
+        this._authclient = new OAuth2Client(provider.clientId, provider.clientSecret ?? null, redirectUrl)
         break
     }
   }
@@ -153,27 +140,33 @@ export class AuthClient {
   async refreshAccessToken(
     refreshToken: string,
   ): Promise<OAuth2Tokens | null> {
-    try {
-      let tokenData: OAuth2Tokens
-
-      if (this._authclient instanceof Google
-        || this._authclient instanceof GitHub
-        || this._authclient instanceof Spotify
-      ) {
-        tokenData = await this._authclient.refreshAccessToken(refreshToken)
-      }
-      else {
-        tokenData = await this._authclient.refreshAccessToken(this.provider.tokenEndpoint ?? '', refreshToken, this.provider.scopes)
-      }
-
-      return tokenData
+    if (this._authclient instanceof Google
+      || this._authclient instanceof GitHub
+      || this._authclient instanceof Spotify
+    ) {
+      return this._authclient.refreshAccessToken(refreshToken)
     }
-    catch (e) {
-      if (e instanceof OAuth2RequestError) {
-        throw new AuthError(e.message, 'invalid_token', this.provider.name)
-      }
-      throw e
+    return this._authclient.refreshAccessToken(this.provider.tokenEndpoint ?? '', refreshToken, this.provider.scopes)
+  }
+
+  protected isInvalidTokenError(error: unknown): boolean {
+    console.log(typeof error, error)
+    if (error instanceof OAuth2RequestError && error.code === 'invalid_grant') {
+      return true
     }
+    if (
+      error instanceof UnexpectedErrorResponseBodyError
+      && error.data
+      && typeof error.data === 'object'
+      && 'errors' in error.data
+      && Array.isArray(error.data?.errors)
+    ) {
+      const errors: Array<{ errorType: string, message: string }> = error.data.errors
+      if (errors.some(e => e.errorType === 'invalid_grant')) {
+        return true
+      }
+    }
+    return false
   }
 
   async getTokenFromStoreOrRefreshToken(): Promise<string | undefined> {
@@ -217,11 +210,11 @@ export class AuthClient {
             access_token = newAccessToken
           }
           catch (error) {
-            if (error instanceof AuthError && error.reason === 'invalid_token') {
+            if (this.isInvalidTokenError(error)) {
               this._logger.warn('Refresh token is invalid, clearing storage')
-              // if the error is an AuthError, remove the stored token
-              // so that the user can re-authenticate
+              // remove the stored token so that the user can re-authenticate
               await this._storage.delete(this.storageKey)
+              access_token = undefined
             }
             else {
               this._logger.error('Failed to refresh access token', { error })
@@ -242,12 +235,12 @@ export class AuthClient {
   async cacheAuthToken(
     access_token: string,
     refresh_token: string,
-    expires_in: number,
+    expires_in_seconds: number,
   ) {
     const tokenStore: TokenStore = {
       access_token,
       refresh_token,
-      expires_at: Date.now() + expires_in * 1000,
+      expires_at: Date.now() + expires_in_seconds * 1000,
     }
 
     this._storage.set(this.storageKey, tokenStore)

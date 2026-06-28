@@ -104,10 +104,34 @@ describe('AuthClient', () => {
       const token = await client.getTokenFromStoreOrRefreshToken()
 
       expect((client as unknown as { _authclient: { refreshAccessToken: (...args: unknown[]) => Promise<unknown> }, _storage: { delete: (key: string) => void } })._storage.delete).toHaveBeenCalledWith(client.storageKey)
-      expect(token).toBe('expired-token')
+      expect(token).toBeUndefined()
     })
 
-    it('getTokenFromStoreOrRefreshToken should deduplicate concurrent refresh calls', async () => {
+    it('should delete token when refresh token is invalid', async () => {
+      const mockStore = {
+        access_token: 'expired-token',
+        expires_at: Date.now() - 10000,
+        refresh_token: 'refresh-token',
+      }
+      vi.spyOn(client, 'getAuthTokenFromStorage').mockResolvedValueOnce(mockStore)
+
+      const { UnexpectedErrorResponseBodyError } = await import('arctic')
+      const reqError = new UnexpectedErrorResponseBodyError(400, {
+        errorType: 'invalid_grant',
+        message: 'Refresh token invalid: mock-reason',
+      })
+
+      vi.spyOn((client as unknown as { _authclient: { refreshAccessToken: (...args: unknown[]) => Promise<unknown> }, _storage: { delete: (key: string) => void } })._authclient, 'refreshAccessToken').mockRejectedValueOnce(reqError)
+
+      vi.spyOn((client as unknown as { _authclient: { refreshAccessToken: (...args: unknown[]) => Promise<unknown> }, _storage: { delete: (key: string) => void } })._storage, 'delete')
+
+      const token = await client.getTokenFromStoreOrRefreshToken()
+
+      expect((client as unknown as { _authclient: { refreshAccessToken: (...args: unknown[]) => Promise<unknown> }, _storage: { delete: (key: string) => void } })._storage.delete).toHaveBeenCalledWith(client.storageKey)
+      expect(token).toBeUndefined()
+    })
+
+    it('should deduplicate concurrent refresh calls', async () => {
       const mockStore = {
         access_token: 'expired-token',
         expires_at: Date.now() - 10000,
